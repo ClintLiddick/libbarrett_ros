@@ -28,6 +28,7 @@
 #include <boost/array.hpp>
 #include <barrett/exception.h>
 #include <barrett/systems.h>
+#include <barrett/products/force_torque_sensor.h>
 
 #include "ros/ros.h"
 #include <urdf/model.h>
@@ -224,22 +225,32 @@ int main(int argc, char **argv)
 	pm.waitForWam(prompt_on_zeroing);
 	pm.wakeAllPucks();
 
-	if (pm.foundWam7()) {
+  if (pm.foundWam7()) {
     // TODO: This also takes a config path.
-    systems::Wam<7> *wam = pm.getWam7(wait_for_shift_activate);
+    ::barrett::systems::Wam<7> *wam = pm.getWam7(wait_for_shift_activate);
     wam->gravityCompensate();
 
     BarrettHW<7> bhw(wam, &pm, nh);
     ::barrett::systems::connect(wam->jpOutput, bhw.input);
     wam->trackReferenceSignal(bhw.output);
+  } else if (pm.foundWam4()) {
+    RAVELOG_WARN("The 4-DOF WAM is not yet supported.");
+  } else if (pm.foundWam3()) {
+    RAVELOG_WARN("The 3-DOF WAM is not yet supported.");
+  }
 
-    // Wait for the user to press Shift-idle
-    pm.getSafetyModule()->waitForMode(SafetyModule::IDLE);
+  if (pm.foundHand()) {
+    ::barrett::Hand *ft = pm.getHand();
+    ROS_WARN("The BarrettHand is not yet supported.");
+  }
 
-    return 0;
-	} else {
-    ROS_FATAL("No WAM was found. Perhaps there is a bug in"
-              " ProductManager::waitForWAM?");
-		return 1;
-	}
+  if (pm.foundForceTorqueSensor()) {
+    ::barrett::ForceTorqueSensor *ft = pm.getForceTorqueSensor();
+    ROS_WARN("The Barrett force/torque sensors is not yet supported.");
+  }
+
+  // Wait for the user to press Shift-idle
+  pm.getSafetyModule()->waitForMode(SafetyModule::IDLE);
+
+  return 0;
 }
