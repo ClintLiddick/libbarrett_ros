@@ -7,6 +7,7 @@ project(libbarrett_ros)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  cmake_modules
   std_msgs
   tf
   message_generation
