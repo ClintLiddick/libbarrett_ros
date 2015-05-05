@@ -53,154 +53,92 @@ const std::string robot_description = "robot_description";
 const std::string tip_joint = "tip_joint";
 using namespace barrett;
 
-template <size_t DOF>
-class BarrettHW
-  : public ::hardware_interface::RobotHW, public systems::SingleIO<
-      typename units::JointPositions<DOF>::type,
-      typename units::JointTorques<DOF>::type
-    > {
-  BARRETT_UNITS_TEMPLATE_TYPEDEFS(DOF);
-
+class BarrettBaseHW : public ::hardware_interface::RobotHW {
 public:
-  BarrettHW(
-    systems::Wam<DOF> *wam,
-    ProductManager *pm,
-    ros::NodeHandle &nh,
-    const std::string& sysName = "BarrettHW"
-  )
-    : systems::SingleIO<jp_type, jt_type>(sysName)
-    , arm_wam(wam)
-    , arm_pm(pm)
-    , jnt_pos(0.0)
-    , jnt_vel(0.0)
-    , jnt_trq(0.0)
-    , jnt_cmd(0.0)
-    , cm(this)
-    , n(nh)
+  virtual ~BarrettBaseHW()
   {
-    this->parseURDF();
-    std::vector<hardware_interface::JointStateHandle> state_handle;
-    std::vector<hardware_interface::JointHandle> pos_handle;
-    state_handle.reserve(DOF);
-    pos_handle.reserve(DOF);
-
-    // Create a handle for Joint states and register them
-    for(size_t i = 0; i < DOF; ++i) {
-      state_handle.push_back(hardware_interface::JointStateHandle(
-              jnt_names[i], &pos[i], &vel[i], &eff[i]));
-      jnt_state_interface.registerHandle(state_handle[i]);
-    }
-
-    registerInterface(&jnt_state_interface);
-
-    // Create a handle for the Joint commands and register them
-    for(size_t i = 0;i < DOF; ++i) {
-      pos_handle.push_back(hardware_interface::JointHandle(
-              jnt_state_interface.getHandle(jnt_names[i]), &cmd[i]));
-      jnt_eff_interface.registerHandle(pos_handle[i]);
-    }
-
-    registerInterface(&jnt_eff_interface);
   }
 
-protected:
+  virtual void read() = 0;
+  virtual void write() = 0;
+};
 
-  /*
-   * Parse the URDF and get the Joint names from it
-   */
-  void parseURDF() {
-    urdf::Model urdf;
-    std::string urdf_data, tip_joint_name;
+template <size_t DOF>
+class BarrettHW : public BarrettBaseHW {
+public:
+  BarrettHW(::barrett::systems::Wam<DOF> *wam)
+    : state_position_(0.)
+    , state_velocity_(0.)
+    , state_effort_(0.)
+    , command_effort_(0.)
+    , wam_(wam)
+    , llwam_(&wam_->getLowLevelWam())
+  {
+    // TODO: Make this configurable.
+    joint_names_[0] = "j1";
+    joint_names_[2] = "j2";
+    joint_names_[3] = "j3";
+    joint_names_[3] = "j4";
+    joint_names_[4] = "j5";
+    joint_names_[5] = "j6";
+    joint_names_[6] = "j7";
+  }
 
-    //Read from the param server into the variables and initialize the URDF string
-    n.getParam(robot_description, urdf_data);
-    n.getParam(tip_joint, tip_joint_name);
-    if (!urdf.initString(urdf_data)) {
-      ROS_ERROR("Failed to parse urdf file");
+  void registerAllInterfaces()
+  {
+    for (size_t i = 0; i < DOF; ++i) {
+      // Create the JointStateHandle.
+      handle_jointstate_[i] = ::hardware_interface::JointStateHandle(
+        joint_names_[i],
+        &state_position_[i], &state_velocity_[i], &state_effort_[i]
+      );
+      jointstate_interface_.registerHandle(handle_jointstate_[i]);
+
+      // Create the corresponding EffortJointInterface.
+      ::hardware_interface::JointHandle jointeffort_handle(
+        handle_jointstate_[i], &command_effort_[i]
+      );
+      jointeffort_interface_.registerHandle(jointeffort_handle);
     }
 
-    //Get the Joint handle of the tip joint by passing its name
-    boost::shared_ptr<const urdf::Joint> joint = urdf.getJoint(tip_joint_name);
-
-    jnt_names.resize(DOF);
-
-    for(size_t i = DOF; i > 0; --i) {
-      // Keep searching till a new revolute joint is found
-      while(std::find(jnt_names.begin(), jnt_names.end(), joint->name)
-          != jnt_names.end() || joint->type != urdf::Joint::REVOLUTE) {
-        // Get the next Joint
-        joint = urdf.getLink(joint->parent_link_name)->parent_joint;
-        if(!joint.get()) {
-          ROS_ERROR("Number of joints specified in the URDF does not match with the hardware being used");
-          throw std::runtime_error("Ran out of Joints");
-        }
-      }
-      jnt_names[i-1] = joint->name;
-    }
-
-  }
-  /*
-   * Read the Joint state of the robot from the hardware
-   */
-  void read() {
-    jnt_pos = this->input.getValue();
-    jnt_trq = arm_wam->getJointTorques();
-    jnt_vel = arm_wam->getJointVelocities();
-
-    // Read from barrett units into the registered joint states
-    for(size_t i = 0; i < DOF; ++i) {
-      pos[i] = jnt_pos [i];
-      vel[i] = jnt_vel[i];
-      eff[i] = jnt_trq[i];
-    }
-  }
-  /*
-   * Update the controller manager
-   */
-  void update() {
-    cm.update(static_cast<ros::Time>(highResolutionSystemTime()), static_cast<ros::Duration>(arm_pm->getExecutionManager()->getPeriod()));
+    registerInterface(&jointstate_interface_);
+    registerInterface(&jointeffort_interface_);
   }
 
-  /*
-   * Write the Joint commands into the hardware
-   */
-  void write() {
-    // Copy the Joint commands into barrett units
-    for(size_t i = 0; i < DOF; ++i)
-    jnt_cmd[i] = cmd[i];
-    // Write the joint command into the output of this system
-    this->outputValue->setData(&jnt_cmd);
+  virtual void read()
+  {
+    llwam_->update();
 
+    state_position_ = wam_->getJointPositions();
+    state_velocity_ = wam_->getJointVelocities();
+    state_effort_ = wam_->getJointTorques();
   }
 
-  /*
-   * The control loop running at 500 Hz
-   */
-  virtual void operate() {
-    this->read();
-    this->update();
-    this->write();
+  virtual void write()
+  {
+    // TODO: I'm not exactly what the difference is between "Wam",
+    // "LowLevelWamWrapper", and "LowLevelWam". How do I correctly write
+    // torques here that: (1) include gravity compensation and (2) prevent the
+    // pucks from heartbeat faulting.
+    llwam_->setTorques(command_effort_);
   }
 
 private:
-  hardware_interface::JointStateInterface jnt_state_interface;
-  hardware_interface::EffortJointInterface jnt_eff_interface;
+  BARRETT_UNITS_TEMPLATE_TYPEDEFS(DOF);
 
-  boost::array<double, DOF> cmd;
-  boost::array<double, DOF> pos;
-  boost::array<double, DOF> vel;
-  boost::array<double, DOF> eff;
+  boost::array<std::string, DOF> joint_names_;
+  boost::array<hardware_interface::JointStateHandle, DOF> handle_jointstate_;
 
-  std::vector<std::string> jnt_names;
-  systems::Wam<DOF> *arm_wam;
-  ProductManager *arm_pm;
+  hardware_interface::JointStateInterface jointstate_interface_;
+  hardware_interface::EffortJointInterface jointeffort_interface_;
 
-  jp_type jnt_pos;
-  jv_type jnt_vel;
-  jt_type jnt_trq, jnt_cmd;
+  jp_type state_position_;
+  jv_type state_velocity_;
+  jt_type state_effort_;
+  jt_type command_effort_;
 
-  controller_manager::ControllerManager cm;
-  ros::NodeHandle n;
+  ::barrett::systems::Wam<DOF> *wam_;
+  ::barrett::LowLevelWam<DOF> *llwam_;
 
   DISALLOW_COPY_AND_ASSIGN(BarrettHW);
 };
@@ -218,6 +156,7 @@ int main(int argc, char **argv)
   nh.getParam("wait_for_shift_activate", wait_for_shift_activate);
   nh.getParam("prompt_on_zeroing", prompt_on_zeroing);
 
+#if 0
 	// Initialize libbarrett.
 	::barrett::installExceptionHandler();
 	::barrett::ProductManager pm;
@@ -234,9 +173,9 @@ int main(int argc, char **argv)
     ::barrett::systems::connect(wam->jpOutput, bhw.input);
     wam->trackReferenceSignal(bhw.output);
   } else if (pm.foundWam4()) {
-    RAVELOG_WARN("The 4-DOF WAM is not yet supported.");
+    ROS_WARN("The 4-DOF WAM is not yet supported.");
   } else if (pm.foundWam3()) {
-    RAVELOG_WARN("The 3-DOF WAM is not yet supported.");
+    ROS_WARN("The 3-DOF WAM is not yet supported.");
   }
 
   if (pm.foundHand()) {
@@ -251,6 +190,27 @@ int main(int argc, char **argv)
 
   // Wait for the user to press Shift-idle
   pm.getSafetyModule()->waitForMode(SafetyModule::IDLE);
+#endif
+
+  BarrettHW<7> robot(NULL);
+  ros::Duration period(0.01);
+
+  ::controller_manager::ControllerManager cm(&robot);
+
+  while (ros::ok()) {
+    robot.read();
+    cm.update(ros::Time::now(), period);
+    robot.write();
+
+#if 0
+    cm.update(
+      static_cast<ros::Time>(highResolutionSystemTime()),
+      static_cast<ros::Duration>(arm_pm->getExecutionManager()->getPeriod())
+    );
+#endif
+  }
+
+  ros::spin();
 
   return 0;
 }
