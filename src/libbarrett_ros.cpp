@@ -25,10 +25,14 @@
  Date: 15 October, 2014
  Author: Hariharasudan Malaichamee
  */
+#include <vector>
 #include <boost/array.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/shared_ptr.hpp>
 #include <barrett/exception.h>
 #include <barrett/systems.h>
 #include <barrett/products/force_torque_sensor.h>
+#include <hardware_interface/force_torque_sensor_interface.h>
 
 #include "ros/ros.h"
 #include <urdf/model.h>
@@ -53,6 +57,19 @@ const std::string robot_description = "robot_description";
 const std::string tip_joint = "tip_joint";
 using namespace barrett;
 
+struct BarrettInterfaces {
+  hardware_interface::JointStateInterface jointstate_interface;
+  hardware_interface::EffortJointInterface jointeffort_interface;
+  hardware_interface::ForceTorqueSensorInterface forcetorque_interface;
+
+  void registerAll(hardware_interface::RobotHW &hardware)
+  {
+    hardware.registerInterface(&jointstate_interface);
+    hardware.registerInterface(&jointeffort_interface);
+    hardware.registerInterface(&forcetorque_interface);
+  }
+};
+
 class BarrettBaseHW : public ::hardware_interface::RobotHW {
 public:
   virtual ~BarrettBaseHW()
@@ -61,6 +78,48 @@ public:
 
   virtual void read() = 0;
   virtual void write() = 0;
+
+  virtual void registerHandles(BarrettInterfaces &interfaces) = 0;
+};
+
+class BarrettAggregateHW : public ::hardware_interface::RobotHW {
+public:
+  BarrettAggregateHW()
+  {
+  }
+
+  virtual ~BarrettAggregateHW()
+  {
+  }
+
+  void add(boost::shared_ptr<BarrettBaseHW> const &hardware)
+  {
+    hardware_.push_back(hardware);
+    hardware->registerHandles(interfaces_);
+  }
+
+  void initialize()
+  {
+    interfaces_.registerAll(*this);
+  }
+
+  virtual void read()
+  {
+    for (size_t i = 0; i < hardware_.size(); ++i) {
+      hardware_[i]->read();
+    }
+  }
+
+  virtual void write()
+  {
+    for (size_t i = 0; i < hardware_.size(); ++i) {
+      hardware_[i]->write();
+    }
+  }
+
+private:
+  BarrettInterfaces interfaces_;
+  std::vector<boost::shared_ptr<BarrettBaseHW> > hardware_;
 };
 
 template <size_t DOF>
@@ -84,7 +143,11 @@ public:
     joint_names_[6] = "j7";
   }
 
-  void registerAllInterfaces()
+  virtual ~WamHW()
+  {
+  }
+
+  virtual void registerHandles(BarrettInterfaces &interfaces)
   {
     for (size_t i = 0; i < DOF; ++i) {
       // Create the JointStateHandle.
@@ -92,17 +155,14 @@ public:
         joint_names_[i],
         &state_position_[i], &state_velocity_[i], &state_effort_[i]
       );
-      jointstate_interface_.registerHandle(handle_jointstate_[i]);
+      interfaces.jointstate_interface.registerHandle(handle_jointstate_[i]);
 
       // Create the corresponding EffortJointInterface.
       ::hardware_interface::JointHandle jointeffort_handle(
         handle_jointstate_[i], &command_effort_[i]
       );
-      jointeffort_interface_.registerHandle(jointeffort_handle);
+      interfaces.jointeffort_interface.registerHandle(jointeffort_handle);
     }
-
-    registerInterface(&jointstate_interface_);
-    registerInterface(&jointeffort_interface_);
   }
 
   virtual void read()
@@ -143,6 +203,57 @@ private:
   DISALLOW_COPY_AND_ASSIGN(WamHW);
 };
 
+
+class ForceTorqueSensorHW : public BarrettBaseHW {
+public:
+  ForceTorqueSensorHW(
+      ::barrett::ForceTorqueSensor *forcetorque_sensor,
+      std::string const &name, std::string const &frame_id)
+    : name_(name)
+    , frame_id_(frame_id)
+    , force_(0.)
+    , torque_(0.)
+    , sensor_(forcetorque_sensor)
+  {
+  }
+
+  virtual ~ForceTorqueSensorHW()
+  {
+  }
+
+  virtual void registerHandles(BarrettInterfaces &interfaces)
+  {
+    // TODO: Are force_ and torque_ guaranteed to be contiguous?
+    interfaces.forcetorque_interface.registerHandle(
+      hardware_interface::ForceTorqueSensorHandle(
+        name_, frame_id_, &force_[0], &torque_[0]
+      )
+    );
+  }
+
+  virtual void read()
+  {
+    force_ = sensor_->getForce();
+    torque_ = sensor_->getForce();
+  }
+
+  virtual void write()
+  {
+  }
+
+private:
+  BARRETT_UNITS_FIXED_SIZE_TYPEDEFS;
+
+  hardware_interface::ForceTorqueSensorInterface forcetorque_interface_;
+
+  std::string name_;
+  std::string frame_id_;
+  cf_type force_;
+  cf_type torque_;
+
+  ::barrett::ForceTorqueSensor *sensor_;
+};
+
 int main(int argc, char **argv)
 {
   // Initialize ROS.
@@ -151,15 +262,16 @@ int main(int argc, char **argv)
   ::ros::AsyncSpinner spinner(2);
   spinner.start();
 
+  // Read parameters.
   bool wait_for_shift_activate = true;
   bool prompt_on_zeroing = true;
   nh.getParam("wait_for_shift_activate", wait_for_shift_activate);
   nh.getParam("prompt_on_zeroing", prompt_on_zeroing);
 
-#if 0
 	// Initialize libbarrett.
 	::barrett::installExceptionHandler();
 	::barrett::ProductManager pm;
+  BarrettAggregateHW robot;
 
 	pm.waitForWam(prompt_on_zeroing);
 	pm.wakeAllPucks();
@@ -169,9 +281,9 @@ int main(int argc, char **argv)
     ::barrett::systems::Wam<7> *wam = pm.getWam7(wait_for_shift_activate);
     wam->gravityCompensate();
 
-    WamHW<7> bhw(wam, &pm, nh);
-    ::barrett::systems::connect(wam->jpOutput, bhw.input);
-    wam->trackReferenceSignal(bhw.output);
+    robot.add(
+      boost::make_shared<WamHW<7> >(wam)
+    );
   } else if (pm.foundWam4()) {
     ROS_WARN("The 4-DOF WAM is not yet supported.");
   } else if (pm.foundWam3()) {
@@ -184,18 +296,21 @@ int main(int argc, char **argv)
   }
 
   if (pm.foundForceTorqueSensor()) {
-    ::barrett::ForceTorqueSensor *ft = pm.getForceTorqueSensor();
-    ROS_WARN("The Barrett force/torque sensors is not yet supported.");
+    robot.add(
+      boost::make_shared<ForceTorqueSensorHW>(
+        pm.getForceTorqueSensor(), "ft_sensor", "ft_sensor_frame"
+      )
+    );
   }
+
+  // Initialize ros_control.
+  robot.initialize();
+  ::controller_manager::ControllerManager cm(&robot);
 
   // Wait for the user to press Shift-idle
   pm.getSafetyModule()->waitForMode(SafetyModule::IDLE);
-#endif
-
-  WamHW<7> robot(NULL);
-  ros::Duration period(0.01);
-
-  ::controller_manager::ControllerManager cm(&robot);
+  
+  ros::Duration period(0.1);
 
   while (ros::ok()) {
     robot.read();
