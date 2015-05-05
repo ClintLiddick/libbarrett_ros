@@ -27,6 +27,7 @@
  */
 #include <vector>
 #include <boost/array.hpp>
+#include <boost/format.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
 #include <barrett/exception.h>
@@ -125,7 +126,8 @@ private:
 template <size_t DOF>
 class WamHW : public BarrettBaseHW {
 public:
-  WamHW(::barrett::systems::Wam<DOF> *wam)
+  WamHW(::barrett::systems::Wam<DOF> *wam,
+        boost::array<std::string, DOF> const *joint_names = NULL)
     : state_position_(0.)
     , state_velocity_(0.)
     , state_effort_(0.)
@@ -133,14 +135,13 @@ public:
     , wam_(wam)
     , llwam_(&wam_->getLowLevelWam())
   {
-    // TODO: Make this configurable.
-    joint_names_[0] = "j1";
-    joint_names_[1] = "j2";
-    joint_names_[2] = "j3";
-    joint_names_[3] = "j4";
-    joint_names_[4] = "j5";
-    joint_names_[5] = "j6";
-    joint_names_[6] = "j7";
+    if (joint_names) {
+      joint_names_ = *joint_names;
+    } else {
+      for (size_t i = 0; i < DOF; ++i) {
+        joint_names_[i] = boost::str(boost::format("j%d") % i);
+      }
+    }
   }
 
   virtual ~WamHW()
