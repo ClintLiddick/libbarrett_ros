@@ -55,6 +55,8 @@ using ::libbarrett_ros::WamHW;
 
 int main(int argc, char **argv)
 {
+  BarrettRobotHW robot;
+
   // Initialize ROS.
   ::ros::init(argc, argv, "libbarrett_ros");
   ::ros::NodeHandle nh;
@@ -64,18 +66,20 @@ int main(int argc, char **argv)
   // Read parameters.
   bool wait_for_shift_activate = true;
   bool prompt_on_zeroing = true;
+
   nh.getParam("wait_for_shift_activate", wait_for_shift_activate);
   nh.getParam("prompt_on_zeroing", prompt_on_zeroing);
 
   // Initialize libbarrett.
   ::barrett::installExceptionHandler();
   ::barrett::ProductManager pm;
-  BarrettRobotHW robot;
 
+  // TODO: Is this the right initialization order?
   pm.waitForWam(prompt_on_zeroing);
   pm.wakeAllPucks();
   pm.getSafetyModule()->waitForMode(barrett::SafetyModule::IDLE);
 
+  // TODO: Don't hard-code joint names.
   if (pm.foundWam7()) {
     ROS_INFO("Found a 7-DOF WAM.");
     robot.add(
@@ -96,11 +100,13 @@ int main(int argc, char **argv)
   if (pm.foundHand()) {
     ROS_INFO("Found a BarrettHand.");
     ::barrett::Hand *ft = pm.getHand();
+    // TODO: Implement a BarrettHand hardware interface.
     ROS_WARN("The BarrettHand is not yet supported.");
   }
 
   if (pm.foundForceTorqueSensor()) {
     ROS_INFO("Found a force/torque sensor.");
+    // TODO: Don't hard-code the name and frame_id.
     robot.add(
       boost::make_shared<ForceTorqueSensorHW>(
         pm.getForceTorqueSensor(), "ft_sensor", "ft_sensor_frame"));
@@ -110,24 +116,20 @@ int main(int argc, char **argv)
   robot.initialize();
   ::controller_manager::ControllerManager cm(&robot);
 
-  ros::Duration period(0.1);
+  // Start the control loop.
+  ::barrett::systems::RealTimeExecutionManager *execution_manager
+    = pm.getExecutionManager();
+  ros::Duration const period(execution_manager->getPeriod());
 
-  ROS_INFO("Starting control loop.");
-
+  // TODO: Can we run this inside the RealTimeExecutionManager?
   while (ros::ok()) {
-    //robot.read();
-    cm.update(ros::Time::now(), period);
-    //robot.write();
+    robot.read();
 
-#if 0
-    cm.update(
-      static_cast<ros::Time>(highResolutionSystemTime()),
-      static_cast<ros::Duration>(arm_pm->getExecutionManager()->getPeriod())
-    );
-#endif
+    ros::Time const now(::barrett::highResolutionSystemTime());
+    cm.update(now, period);
 
+    robot.write();
   }
-  ROS_INFO("Exiting control loop.");
 
   return 0;
 }
