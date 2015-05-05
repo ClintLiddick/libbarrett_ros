@@ -64,9 +64,9 @@ public:
 };
 
 template <size_t DOF>
-class BarrettHW : public BarrettBaseHW {
+class WamHW : public BarrettBaseHW {
 public:
-  BarrettHW(::barrett::systems::Wam<DOF> *wam)
+  WamHW(::barrett::systems::Wam<DOF> *wam)
     : state_position_(0.)
     , state_velocity_(0.)
     , state_effort_(0.)
@@ -140,7 +140,7 @@ private:
   ::barrett::systems::Wam<DOF> *wam_;
   ::barrett::LowLevelWam<DOF> *llwam_;
 
-  DISALLOW_COPY_AND_ASSIGN(BarrettHW);
+  DISALLOW_COPY_AND_ASSIGN(WamHW);
 };
 
 int main(int argc, char **argv)
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
     ::barrett::systems::Wam<7> *wam = pm.getWam7(wait_for_shift_activate);
     wam->gravityCompensate();
 
-    BarrettHW<7> bhw(wam, &pm, nh);
+    WamHW<7> bhw(wam, &pm, nh);
     ::barrett::systems::connect(wam->jpOutput, bhw.input);
     wam->trackReferenceSignal(bhw.output);
   } else if (pm.foundWam4()) {
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
   pm.getSafetyModule()->waitForMode(SafetyModule::IDLE);
 #endif
 
-  BarrettHW<7> robot(NULL);
+  WamHW<7> robot(NULL);
   ros::Duration period(0.01);
 
   ::controller_manager::ControllerManager cm(&robot);
