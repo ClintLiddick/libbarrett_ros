@@ -277,30 +277,33 @@ int main(int argc, char **argv)
 	pm.wakeAllPucks();
 
   if (pm.foundWam7()) {
-    // TODO: This also takes a config path.
-    ::barrett::systems::Wam<7> *wam = pm.getWam7(wait_for_shift_activate);
-    wam->gravityCompensate();
-
+    ROS_INFO("Found a 7-DOF WAM.");
     robot.add(
-      boost::make_shared<WamHW<7> >(wam)
-    );
+      boost::make_shared<WamHW<7> >(
+        pm.getWam7(wait_for_shift_activate)));
   } else if (pm.foundWam4()) {
-    ROS_WARN("The 4-DOF WAM is not yet supported.");
+    ROS_INFO("Found a 4-DOF WAM.");
+    robot.add(
+      boost::make_shared<WamHW<4> >(
+        pm.getWam4(wait_for_shift_activate)));
   } else if (pm.foundWam3()) {
-    ROS_WARN("The 3-DOF WAM is not yet supported.");
+    ROS_INFO("Found a 3-DOF WAM.");
+    robot.add(
+      boost::make_shared<WamHW<3> >(
+        pm.getWam3(wait_for_shift_activate)));
   }
 
   if (pm.foundHand()) {
+    ROS_INFO("Found a BarrettHand.");
     ::barrett::Hand *ft = pm.getHand();
     ROS_WARN("The BarrettHand is not yet supported.");
   }
 
   if (pm.foundForceTorqueSensor()) {
+    ROS_INFO("Found a force/torque sensor.");
     robot.add(
       boost::make_shared<ForceTorqueSensorHW>(
-        pm.getForceTorqueSensor(), "ft_sensor", "ft_sensor_frame"
-      )
-    );
+        pm.getForceTorqueSensor(), "ft_sensor", "ft_sensor_frame"));
   }
 
   // Initialize ros_control.
