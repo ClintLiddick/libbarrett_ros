@@ -25,6 +25,7 @@
  Date: 15 October, 2014
  Author: Hariharasudan Malaichamee
  */
+#include <boost/array.hpp>
 
 #include "ros/ros.h"
 #include <urdf/model.h>
@@ -51,9 +52,11 @@ const std::string tip_joint = "tip_joint";
 using namespace barrett;
 
 template<size_t DOF>
-class BarrettHW : public hardware_interface::RobotHW, public systems::SingleIO<
-    typename units::JointPositions<DOF>::type,
-    typename units::JointTorques<DOF>::type> {
+class BarrettHW
+  : public hardware_interface::RobotHW
+  , public systems::SingleIO<
+      typename units::JointPositions<DOF>::type,
+      typename units::JointTorques<DOF>::type> {
   BARRETT_UNITS_TEMPLATE_TYPEDEFS(DOF);
 
 public:
@@ -180,13 +183,16 @@ protected:
 private:
   hardware_interface::JointStateInterface jnt_state_interface;
   hardware_interface::EffortJointInterface jnt_eff_interface;
-  double cmd[DOF];
-  double pos[DOF];
-  double vel[DOF];
-  double eff[DOF];
+
+  boost::array<double, DOF> cmd;
+  boost::array<double, DOF> pos;
+  boost::array<double, DOF> vel;
+  boost::array<double, DOF> eff;
+
   std::vector<std::string> jnt_names;
   systems::Wam<DOF> *arm_wam;
   ProductManager *arm_pm;
+
   jp_type jnt_pos;
   jv_type jnt_vel;
   jt_type jnt_trq, jnt_cmd;
