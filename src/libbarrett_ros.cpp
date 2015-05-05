@@ -57,13 +57,22 @@ class BarrettHW : public hardware_interface::RobotHW, public systems::SingleIO<
   BARRETT_UNITS_TEMPLATE_TYPEDEFS(DOF);
 
 public:
-  BarrettHW(systems::Wam<DOF> *wam, ProductManager *pm, ros::NodeHandle &nh, const std::string& sysName = "BarrettHW")
-  :systems::SingleIO<jp_type, jt_type>(sysName),arm_wam(wam), arm_pm(pm), jnt_pos(0.0),
-  jnt_vel (0.0), jnt_trq(0.0), jnt_cmd(0.0), cm(this), n(nh)
+  BarrettHW(
+    systems::Wam<DOF> *wam,
+    ProductManager *pm,
+    ros::NodeHandle &nh,
+    const std::string& sysName = "BarrettHW"
+  )
+    : systems::SingleIO<jp_type, jt_type>(sysName)
+    , arm_wam(wam)
+    , arm_pm(pm)
+    , jnt_pos(0.0)
+    , jnt_vel(0.0)
+    , jnt_trq(0.0)
+    , jnt_cmd(0.0)
+    , cm(this)
+    , n(nh)
   {
-    //const char* j_n[] = {"proficio_joint_1", "proficio_joint_2", "proficio_joint_3",
-    //   "j4", "j5", "j6", "j7"};
-    //std::vector<std::string> jnt_names(j_n, j_n+7);
     this->parseURDF();
     std::vector<hardware_interface::JointStateHandle> state_handle;
     std::vector<hardware_interface::JointHandle> pos_handle;
