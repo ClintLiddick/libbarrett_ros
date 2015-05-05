@@ -150,18 +150,17 @@ public:
   virtual void registerHandles(BarrettInterfaces &interfaces)
   {
     for (size_t i = 0; i < DOF; ++i) {
-      // Create the JointStateHandle.
-      handle_jointstate_[i] = ::hardware_interface::JointStateHandle(
+      ::hardware_interface::JointStateHandle jointstate_handle(
         joint_names_[i],
         &state_position_[i], &state_velocity_[i], &state_effort_[i]
       );
-      interfaces.jointstate_interface.registerHandle(handle_jointstate_[i]);
+      interfaces.jointstate_interface.registerHandle(jointstate_handle);
 
-      // Create the corresponding EffortJointInterface.
-      ::hardware_interface::JointHandle jointeffort_handle(
-        handle_jointstate_[i], &command_effort_[i]
+      interfaces.jointeffort_interface.registerHandle(
+        ::hardware_interface::JointHandle(
+          jointstate_handle, &command_effort_[i]
+        )
       );
-      interfaces.jointeffort_interface.registerHandle(jointeffort_handle);
     }
   }
 
@@ -187,10 +186,6 @@ private:
   BARRETT_UNITS_TEMPLATE_TYPEDEFS(DOF);
 
   boost::array<std::string, DOF> joint_names_;
-  boost::array<hardware_interface::JointStateHandle, DOF> handle_jointstate_;
-
-  hardware_interface::JointStateInterface jointstate_interface_;
-  hardware_interface::EffortJointInterface jointeffort_interface_;
 
   jp_type state_position_;
   jv_type state_velocity_;
