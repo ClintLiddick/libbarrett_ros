@@ -26,6 +26,8 @@
  Author: Hariharasudan Malaichamee
  */
 #include <boost/array.hpp>
+#include <barrett/exception.h>
+#include <barrett/systems.h>
 
 #include "ros/ros.h"
 #include <urdf/model.h>
@@ -34,7 +36,6 @@
 #include <string>
 #include <memory>
 #include <barrett/products/product_manager.h>
-#include <barrett/standard_main_function.h>
 #include <boost/thread.hpp>
 #include <barrett/systems/real_time_execution_manager.h>
 
@@ -51,12 +52,12 @@ const std::string robot_description = "robot_description";
 const std::string tip_joint = "tip_joint";
 using namespace barrett;
 
-template<size_t DOF>
+template <size_t DOF>
 class BarrettHW
-  : public hardware_interface::RobotHW
-  , public systems::SingleIO<
+  : public ::hardware_interface::RobotHW, public systems::SingleIO<
       typename units::JointPositions<DOF>::type,
-      typename units::JointTorques<DOF>::type> {
+      typename units::JointTorques<DOF>::type
+    > {
   BARRETT_UNITS_TEMPLATE_TYPEDEFS(DOF);
 
 public:
@@ -203,20 +204,42 @@ private:
   DISALLOW_COPY_AND_ASSIGN(BarrettHW);
 };
 
-template<size_t DOF>
-int wam_main(int argc, char** argv, ProductManager& pm,
-             systems::Wam<DOF>& wam) {
-  BARRETT_UNITS_TEMPLATE_TYPEDEFS(DOF);
-  ros::init(argc, argv, "libbarrett_ros");
-  ros::NodeHandle nh;
-  ros::AsyncSpinner spinner(2);
+int main(int argc, char **argv)
+{
+  // Initialize ROS.
+  ::ros::init(argc, argv, "libbarrett_ros");
+  ::ros::NodeHandle nh;
+  ::ros::AsyncSpinner spinner(2);
   spinner.start();
-  wam.gravityCompensate();
-  BarrettHW<DOF> bhw(&wam, &pm, nh);
-  systems::connect(wam.jpOutput, bhw.input);
-  wam.trackReferenceSignal(bhw.output);
-  // Wait for the user to press Shift-idle
-  pm.getSafetyModule()->waitForMode(SafetyModule::IDLE);
 
-  return 0;
+  bool wait_for_shift_activate = true;
+  bool prompt_on_zeroing = true;
+  nh.getParam("wait_for_shift_activate", wait_for_shift_activate);
+  nh.getParam("prompt_on_zeroing", prompt_on_zeroing);
+
+	// Initialize libbarrett.
+	::barrett::installExceptionHandler();
+	::barrett::ProductManager pm;
+
+	pm.waitForWam(prompt_on_zeroing);
+	pm.wakeAllPucks();
+
+	if (pm.foundWam7()) {
+    // TODO: This also takes a config path.
+    systems::Wam<7> *wam = pm.getWam7(wait_for_shift_activate);
+    wam->gravityCompensate();
+
+    BarrettHW<7> bhw(wam, &pm, nh);
+    ::barrett::systems::connect(wam->jpOutput, bhw.input);
+    wam->trackReferenceSignal(bhw.output);
+
+    // Wait for the user to press Shift-idle
+    pm.getSafetyModule()->waitForMode(SafetyModule::IDLE);
+
+    return 0;
+	} else {
+    ROS_FATAL("No WAM was found. Perhaps there is a bug in"
+              " ProductManager::waitForWAM?");
+		return 1;
+	}
 }
