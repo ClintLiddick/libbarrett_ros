@@ -135,8 +135,8 @@ public:
   {
     // TODO: Make this configurable.
     joint_names_[0] = "j1";
-    joint_names_[2] = "j2";
-    joint_names_[3] = "j3";
+    joint_names_[1] = "j2";
+    joint_names_[2] = "j3";
     joint_names_[3] = "j4";
     joint_names_[4] = "j5";
     joint_names_[5] = "j6";
@@ -270,6 +270,7 @@ int main(int argc, char **argv)
 
 	pm.waitForWam(prompt_on_zeroing);
 	pm.wakeAllPucks();
+  pm.getSafetyModule()->waitForMode(SafetyModule::IDLE);
 
   if (pm.foundWam7()) {
     ROS_INFO("Found a 7-DOF WAM.");
@@ -305,15 +306,14 @@ int main(int argc, char **argv)
   robot.initialize();
   ::controller_manager::ControllerManager cm(&robot);
 
-  // Wait for the user to press Shift-idle
-  pm.getSafetyModule()->waitForMode(SafetyModule::IDLE);
-  
   ros::Duration period(0.1);
 
+  ROS_INFO("Starting control loop.");
+
   while (ros::ok()) {
-    robot.read();
+    //robot.read();
     cm.update(ros::Time::now(), period);
-    robot.write();
+    //robot.write();
 
 #if 0
     cm.update(
@@ -321,9 +321,9 @@ int main(int argc, char **argv)
       static_cast<ros::Duration>(arm_pm->getExecutionManager()->getPeriod())
     );
 #endif
-  }
 
-  ros::spin();
+  }
+  ROS_INFO("Exiting control loop.");
 
   return 0;
 }
