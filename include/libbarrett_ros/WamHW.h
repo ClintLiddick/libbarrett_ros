@@ -23,7 +23,7 @@ public:
       joint_names_ = *joint_names;
     } else {
       for (size_t i = 0; i < DOF; ++i) {
-        joint_names_[i] = boost::str(boost::format("j%d") % i);
+        joint_names_[i] = boost::str(boost::format("wam_joint%d") % (i + 1));
       }
     }
   }
