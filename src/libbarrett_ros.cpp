@@ -171,7 +171,7 @@ int main(int argc, char **argv)
   ::barrett::installExceptionHandler();
 
   // Initialize ROS.
-  ::ros::init(argc, argv, "libbarrett_ros");
+  ::ros::init(argc, argv, "barrett_ros");
   ::ros::NodeHandle nh;
   ::ros::AsyncSpinner spinner(2);
   spinner.start();
