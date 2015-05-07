@@ -1,5 +1,6 @@
 #ifndef LIBBARRETT_ROS_WAMHW_H_
 #define LIBBARRETT_ROS_WAMHW_H_
+#include <iostream>
 #include <string>
 #include <boost/array.hpp>
 #include <barrett/systems/wam.h>
@@ -23,7 +24,7 @@ public:
       joint_names_ = *joint_names;
     } else {
       for (size_t i = 0; i < DOF; ++i) {
-        joint_names_[i] = boost::str(boost::format("wam_joint%d") % (i + 1));
+        joint_names_[i] = boost::str(boost::format("wam_joint_%d") % (i + 1));
       }
     }
   }
@@ -49,6 +50,12 @@ public:
     }
   }
 
+  virtual void halt()
+  {
+	llwam_->getSafetyModule()->setMode(::barrett::SafetyModule::IDLE);
+    llwam_->getSafetyModule()->waitForMode(::barrett::SafetyModule::IDLE, true, 0.05);
+  }
+
   virtual void read()
   {
     llwam_->update();
@@ -60,10 +67,7 @@ public:
 
   virtual void write()
   {
-    // TODO: I'm not exactly what the difference is between "Wam",
-    // "LowLevelWamWrapper", and "LowLevelWam". How do I correctly write
-    // torques here that: (1) include gravity compensation and (2) prevent the
-    // pucks from heartbeat faulting.
+    // TODO: This does not include gravity compensation.
     llwam_->setTorques(command_effort_);
   }
 

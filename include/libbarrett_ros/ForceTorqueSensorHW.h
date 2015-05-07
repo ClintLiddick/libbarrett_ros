@@ -14,6 +14,8 @@ public:
   virtual ~ForceTorqueSensorHW();
 
   virtual void registerHandles(BarrettInterfaces &interfaces);
+
+  virtual void halt();
   virtual void read();
   virtual void write();
 

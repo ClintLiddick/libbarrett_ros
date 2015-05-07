@@ -22,6 +22,13 @@ void BarrettRobotHW::initialize()
   interfaces_.registerAll(*this);
 }
 
+void BarrettRobotHW::halt()
+{
+  for (size_t i = 0; i < hardware_.size(); ++i) {
+    hardware_[i]->halt();
+  }
+}
+
 void BarrettRobotHW::read()
 {
   for (size_t i = 0; i < hardware_.size(); ++i) {

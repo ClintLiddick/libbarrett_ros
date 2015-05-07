@@ -71,6 +71,8 @@ static std::vector<std::string> get_configuration_paths(
 
   switch (configs_xmlrpc.getType()) {
   case XmlRpcValue::TypeArray:
+    ROS_INFO_STREAM("Found " << configs_xmlrpc.size() << " configuration file(s).");
+
     for (int i = 0; i < configs_xmlrpc.size(); ++i) {
       XmlRpcValue &config_xmlrpc = configs_xmlrpc[i];
 
@@ -83,10 +85,12 @@ static std::vector<std::string> get_configuration_paths(
     break;
 
   case XmlRpcValue::TypeString:
+    ROS_INFO("Found one configuration file.");
     configs.push_back(configs_xmlrpc);
     break;
 
   case XmlRpcValue::TypeInvalid:
+    ROS_INFO("Using default configuration file.");
     configs.push_back(::barrett::EtcPathRelative("default.conf"));
     break;
 
@@ -178,9 +182,10 @@ int main(int argc, char **argv)
 
   // Read parameters.
   ::XmlRpc::XmlRpcValue configs_xmlrpc;
-  std::vector<std::string> config_paths;
+  ::std::vector<std::string> config_paths;
 
-  nh.getParam("configurations", configs_xmlrpc);
+  ::ros::NodeHandle nh_priv("~");
+  nh_priv.getParam("configurations", configs_xmlrpc);
 
   try {
     config_paths = get_configuration_paths(configs_xmlrpc);
@@ -203,6 +208,8 @@ int main(int argc, char **argv)
 
     initialize_product_manager(*product_manager, robot);
     product_managers.push_back(product_manager);
+
+    product_manager->getExecutionManager()->stop();
   }
 
   // Initialize ros_control.
@@ -211,7 +218,10 @@ int main(int argc, char **argv)
 
   // Start the control loop. Default to 500 Hz.
   // TODO: Figure out threading and real-time safety.
+  ROS_INFO("Entering control loop.");
+
   ros::Duration const period(0, 500000000);
+  ros::Rate r(500);
 
   while (ros::ok()) {
     robot.read();
@@ -220,7 +230,14 @@ int main(int argc, char **argv)
     cm.update(now, period);
 
     robot.write();
+
+    r.sleep();
   }
+
+  ROS_INFO("Exited control loop.");
+
+  // Idle the hardware to avoid triggering a heartbeat fault.
+  robot.halt();
 
   return 0;
 }
