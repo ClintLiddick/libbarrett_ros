@@ -58,11 +58,26 @@ public:
 
   virtual void read()
   {
-    llwam_->update();
+    using ::barrett::Puck;
+    using ::barrett::PuckGroup;
 
-    state_position_ = wam_->getJointPositions();
-    state_velocity_ = wam_->getJointVelocities();
-    state_effort_ = wam_->getJointTorques();
+    PuckGroup const &group = llwam_->getPuckGroup();
+    int const P_id = group.getPropertyId(Puck::P);
+
+    group.sendGetPropertyRequest(P_id);
+  }
+
+  virtual void update()
+  {
+    using ::barrett::Puck;
+    using ::barrett::PuckGroup;
+    using ::barrett::MotorPuck;
+
+    PuckGroup const &group = llwam_->getPuckGroup();
+    int const P_id = group.getPropertyId(Puck::P);
+
+    group.receiveGetPropertyReply<MotorPuck::MotorPositionParser<double> >(
+        P_id, state_position_.data(), false);
   }
 
   virtual void write()

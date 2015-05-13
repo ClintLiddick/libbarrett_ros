@@ -16,7 +16,10 @@ public:
   void add(boost::shared_ptr<BarrettBaseHW> const &hardware);
 
   virtual void halt();
+
   virtual void read();
+  virtual void update();
+
   virtual void write();
 
 private:

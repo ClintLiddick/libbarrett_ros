@@ -16,7 +16,10 @@ public:
   virtual void registerHandles(BarrettInterfaces &interfaces);
 
   virtual void halt();
+
   virtual void read();
+  virtual void update();
+
   virtual void write();
 
 private:
@@ -25,8 +28,8 @@ private:
   std::string name_;
   std::string frame_id_;
   cf_type force_;
-  cf_type torque_;
-	ca_type accel_;
+  ct_type torque_;
+  ca_type accel_;
 
   ::barrett::ForceTorqueSensor *sensor_;
 };

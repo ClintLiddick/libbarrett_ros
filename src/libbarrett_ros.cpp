@@ -225,6 +225,7 @@ int main(int argc, char **argv)
 
   while (ros::ok()) {
     robot.read();
+    robot.update();
 
     ros::Time const now(::barrett::highResolutionSystemTime());
     cm.update(now, period);

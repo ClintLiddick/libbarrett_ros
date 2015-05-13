@@ -27,7 +27,10 @@ public:
   }
 
   virtual void halt() = 0;
+
   virtual void read() = 0;
+  virtual void update() = 0;
+
   virtual void write() = 0;
 
   virtual void registerHandles(BarrettInterfaces &interfaces) = 0;

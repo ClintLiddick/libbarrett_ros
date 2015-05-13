@@ -36,6 +36,13 @@ void BarrettRobotHW::read()
   }
 }
 
+void BarrettRobotHW::update()
+{
+  for (size_t i = 0; i < hardware_.size(); ++i) {
+    hardware_[i]->update();
+  }
+}
+
 void BarrettRobotHW::write()
 {
   for (size_t i = 0; i < hardware_.size(); ++i) {

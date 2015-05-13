@@ -36,8 +36,13 @@ void ForceTorqueSensorHW::halt()
 
 void ForceTorqueSensorHW::read()
 {
+  // TODO: Split this into read() and update().
   force_ = sensor_->getForce();
-  torque_ = sensor_->getForce();
+  torque_ = sensor_->getTorque();
+}
+
+void ForceTorqueSensorHW::update()
+{
 }
 
 void ForceTorqueSensorHW::write()
