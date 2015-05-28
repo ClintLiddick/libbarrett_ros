@@ -13,7 +13,9 @@ class WamHW : public BarrettBaseHW {
 public:
   WamHW(barrett::systems::Wam<DOF> *wam,
         boost::array<std::string, DOF> const *joint_names = NULL)
-    : state_position_(0.)
+    : state_position_motor_(std::numeric_limits<double>::max())
+    , state_position_joint_(std::numeric_limits<double>::max())
+    , state_position_best_(std::numeric_limits<double>::max())
     , state_velocity_(0.)
     , state_effort_(0.)
     , command_effort_(0.)
@@ -38,7 +40,7 @@ public:
     for (size_t i = 0; i < DOF; ++i) {
       hardware_interface::JointStateHandle jointstate_handle(
         joint_names_[i],
-        &state_position_[i], &state_velocity_[i], &state_effort_[i]
+        &state_position_best_[i], &state_velocity_[i], &state_effort_[i]
       );
       interfaces.jointstate_interface.registerHandle(jointstate_handle);
 
@@ -67,18 +69,45 @@ public:
     using ::barrett::PuckGroup;
     using ::barrett::MotorPuck;
 
+    typedef MotorPuck::CombinedPositionParser<double> CombinedPositionParser;
+
+    BOOST_STATIC_ASSERT(
+      sizeof(CombinedPositionParser::result_type) == 2 *sizeof(double));
+
     static bool const realtime = false;
 
     // Receive the puck positions.
     PuckGroup const &group = llwam_->getPuckGroup();
     int const P_id = group.getPropertyId(Puck::P);
-    
-    group.receiveGetPropertyReply<MotorPuck::MotorPositionParser<double> >(
-        P_id, state_motor_position_.data(), realtime);
 
-    // Convert from puck positions to motor positions.
-    state_position_ = llwam_->getPuckToJointPositionTransform()
-                      * state_motor_position_;
+    group.receiveGetPropertyReply<CombinedPositionParser>(
+      P_id,
+      reinterpret_cast<CombinedPositionParser::result_type *>(
+        raw_position_.data()),
+      realtime
+    );
+
+    // Converts motor encoder to joint positions.
+    state_position_motor_ = llwam_->getPuckToJointPositionTransform()
+                            * raw_position_.col(0);
+
+    // Read joint encoders, if they're available.
+    for (size_t i = 0; i < DOF; ++i) {
+      if (raw_position_(i, 1) == std::numeric_limits<double>::max()) {
+        state_position_joint_[i] = std::numeric_limits<double>::max();
+        state_position_best_[i] = state_position_motor_[i];
+      } else {
+        state_position_joint_[i]
+          = llwam_->getJointEncoderToJointPositionTransform()[i]
+            * raw_position_(i, 1);
+
+        if (llwam_->usingJointEncoder(i)) {
+          state_position_best_[i] = state_position_joint_[i];
+        } else {
+          state_position_best_[i] = state_position_motor_[i];
+        }
+      }
+    }
   }
 
   virtual void requestOther()
@@ -106,14 +135,17 @@ private:
 
   boost::array<std::string, DOF> joint_names_;
 
-  jp_type state_position_;
-  jp_type state_motor_position_;
+  barrett::math::Matrix<DOF, 2> raw_position_;
+  jp_type state_position_motor_;
+  jp_type state_position_joint_;
+  jp_type state_position_best_;
+
   jv_type state_velocity_;
   jt_type state_effort_;
   jt_type command_effort_;
 
-  ::barrett::systems::Wam<DOF> *wam_;
-  ::barrett::LowLevelWam<DOF> *llwam_;
+  barrett::systems::Wam<DOF> *wam_;
+  barrett::LowLevelWam<DOF> *llwam_;
 
   DISALLOW_COPY_AND_ASSIGN(WamHW);
 };
