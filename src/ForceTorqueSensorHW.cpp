@@ -30,21 +30,29 @@ void ForceTorqueSensorHW::registerHandles(BarrettInterfaces &interfaces)
   // TODO: Also register an IMU for acceleration.
 }
 
-void ForceTorqueSensorHW::halt()
-{
-}
-
-void ForceTorqueSensorHW::read()
+void ForceTorqueSensorHW::requestCritical()
 {
   // TODO: Split this into read() and update().
   force_ = sensor_->getForce();
   torque_ = sensor_->getTorque();
 }
 
-void ForceTorqueSensorHW::update()
+void ForceTorqueSensorHW::receiveCritical()
+{
+}
+
+void ForceTorqueSensorHW::requestOther()
+{
+}
+
+void ForceTorqueSensorHW::receiveOther()
 {
 }
 
 void ForceTorqueSensorHW::write()
+{
+}
+
+void ForceTorqueSensorHW::halt()
 {
 }

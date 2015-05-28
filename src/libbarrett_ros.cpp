@@ -224,8 +224,10 @@ int main(int argc, char **argv)
   ros::Rate r(500);
 
   while (ros::ok()) {
-    robot.read();
-    robot.update();
+    robot.requestCritical();
+    robot.receiveOther();
+    robot.receiveCritical();
+    robot.requestOther();
 
     ros::Time const now(::barrett::highResolutionSystemTime());
     cm.update(now, period);

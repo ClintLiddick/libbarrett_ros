@@ -15,12 +15,15 @@ public:
   void initialize();
   void add(boost::shared_ptr<BarrettBaseHW> const &hardware);
 
-  virtual void halt();
+  void requestCritical();
+  void receiveCritical();
 
-  virtual void read();
-  virtual void update();
+  void requestOther();
+  void receiveOther();
 
-  virtual void write();
+  void write();
+
+  void halt();
 
 private:
   BarrettInterfaces interfaces_;

@@ -15,12 +15,15 @@ public:
 
   virtual void registerHandles(BarrettInterfaces &interfaces);
 
-  virtual void halt();
+  virtual void requestCritical();
+  virtual void receiveCritical();
 
-  virtual void read();
-  virtual void update();
+  virtual void requestOther();
+  virtual void receiveOther();
 
   virtual void write();
+
+  virtual void halt();
 
 private:
   BARRETT_UNITS_FIXED_SIZE_TYPEDEFS;

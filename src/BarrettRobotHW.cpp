@@ -22,24 +22,31 @@ void BarrettRobotHW::initialize()
   interfaces_.registerAll(*this);
 }
 
-void BarrettRobotHW::halt()
+void BarrettRobotHW::requestCritical()
 {
   for (size_t i = 0; i < hardware_.size(); ++i) {
-    hardware_[i]->halt();
+    hardware_[i]->requestCritical();
   }
 }
 
-void BarrettRobotHW::read()
+void BarrettRobotHW::receiveCritical()
 {
   for (size_t i = 0; i < hardware_.size(); ++i) {
-    hardware_[i]->read();
+    hardware_[i]->receiveCritical();
   }
 }
 
-void BarrettRobotHW::update()
+void BarrettRobotHW::requestOther()
 {
   for (size_t i = 0; i < hardware_.size(); ++i) {
-    hardware_[i]->update();
+    hardware_[i]->requestOther();
+  }
+}
+
+void BarrettRobotHW::receiveOther()
+{
+  for (size_t i = 0; i < hardware_.size(); ++i) {
+    hardware_[i]->receiveOther();
   }
 }
 
@@ -47,5 +54,12 @@ void BarrettRobotHW::write()
 {
   for (size_t i = 0; i < hardware_.size(); ++i) {
     hardware_[i]->write();
+  }
+}
+
+void BarrettRobotHW::halt()
+{
+  for (size_t i = 0; i < hardware_.size(); ++i) {
+    hardware_[i]->halt();
   }
 }

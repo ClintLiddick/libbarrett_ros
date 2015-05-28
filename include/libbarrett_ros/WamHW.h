@@ -11,7 +11,7 @@ namespace libbarrett_ros {
 template <size_t DOF>
 class WamHW : public BarrettBaseHW {
 public:
-  WamHW(::barrett::systems::Wam<DOF> *wam,
+  WamHW(barrett::systems::Wam<DOF> *wam,
         boost::array<std::string, DOF> const *joint_names = NULL)
     : state_position_(0.)
     , state_velocity_(0.)
@@ -36,7 +36,7 @@ public:
   virtual void registerHandles(BarrettInterfaces &interfaces)
   {
     for (size_t i = 0; i < DOF; ++i) {
-      ::hardware_interface::JointStateHandle jointstate_handle(
+      hardware_interface::JointStateHandle jointstate_handle(
         joint_names_[i],
         &state_position_[i], &state_velocity_[i], &state_effort_[i]
       );
@@ -50,13 +50,7 @@ public:
     }
   }
 
-  virtual void halt()
-  {
-	llwam_->getSafetyModule()->setMode(::barrett::SafetyModule::IDLE);
-    llwam_->getSafetyModule()->waitForMode(::barrett::SafetyModule::IDLE, true, 0.05);
-  }
-
-  virtual void read()
+  virtual void requestCritical()
   {
     using ::barrett::Puck;
     using ::barrett::PuckGroup;
@@ -67,7 +61,7 @@ public:
     group.sendGetPropertyRequest(P_id);
   }
 
-  virtual void update()
+  virtual void receiveCritical()
   {
     using ::barrett::Puck;
     using ::barrett::PuckGroup;
@@ -78,6 +72,20 @@ public:
 
     group.receiveGetPropertyReply<MotorPuck::MotorPositionParser<double> >(
         P_id, state_position_.data(), false);
+  }
+
+  virtual void requestOther()
+  {
+  }
+
+  virtual void receiveOther()
+  {
+  }
+
+  virtual void halt()
+  {
+	llwam_->getSafetyModule()->setMode(::barrett::SafetyModule::IDLE);
+    llwam_->getSafetyModule()->waitForMode(::barrett::SafetyModule::IDLE, true, 0.05);
   }
 
   virtual void write()
