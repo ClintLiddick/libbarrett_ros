@@ -28,11 +28,17 @@ public:
 private:
   BARRETT_UNITS_FIXED_SIZE_TYPEDEFS;
 
+  static int const STATE_REQUEST_SENT;
+  static int const STATE_RECEIVED_FORCE;
+  static int const STATE_RECEIVED_TORQUE;
+  static int const STATE_IDLE;
+
   std::string name_;
   std::string frame_id_;
   cf_type force_;
   ct_type torque_;
   ca_type accel_;
+  int state_;
 
   ::barrett::ForceTorqueSensor *sensor_;
 };

@@ -67,11 +67,18 @@ public:
     using ::barrett::PuckGroup;
     using ::barrett::MotorPuck;
 
+    static bool const realtime = false;
+
+    // Receive the puck positions.
     PuckGroup const &group = llwam_->getPuckGroup();
     int const P_id = group.getPropertyId(Puck::P);
-
+    
     group.receiveGetPropertyReply<MotorPuck::MotorPositionParser<double> >(
-        P_id, state_position_.data(), false);
+        P_id, state_motor_position_.data(), realtime);
+
+    // Convert from puck positions to motor positions.
+    state_position_ = llwam_->getPuckToJointPositionTransform()
+                      * state_motor_position_;
   }
 
   virtual void requestOther()
@@ -84,8 +91,8 @@ public:
 
   virtual void halt()
   {
-	llwam_->getSafetyModule()->setMode(::barrett::SafetyModule::IDLE);
-    llwam_->getSafetyModule()->waitForMode(::barrett::SafetyModule::IDLE, true, 0.05);
+	llwam_->getSafetyModule()->setMode(barrett::SafetyModule::IDLE);
+    llwam_->getSafetyModule()->waitForMode(barrett::SafetyModule::IDLE, true, 0.05);
   }
 
   virtual void write()
@@ -100,6 +107,7 @@ private:
   boost::array<std::string, DOF> joint_names_;
 
   jp_type state_position_;
+  jp_type state_motor_position_;
   jv_type state_velocity_;
   jt_type state_effort_;
   jt_type command_effort_;
