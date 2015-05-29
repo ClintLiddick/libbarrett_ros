@@ -163,7 +163,8 @@ static void initialize_product_manager(
     // TODO: Don't hard-code the name and frame_id.
     robot.add(
       make_shared<ForceTorqueSensorHW>(
-        pm.getForceTorqueSensor(), "ft_sensor", "ft_sensor_frame"));
+        pm.getForceTorqueSensor(), "forcetorque", "accelerometer",
+        "ft_sensor_frame"));
   }
 }
 

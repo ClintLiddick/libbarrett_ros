@@ -9,8 +9,9 @@ namespace libbarrett_ros {
 class ForceTorqueSensorHW : public BarrettBaseHW {
 public:
   ForceTorqueSensorHW(
-      ::barrett::ForceTorqueSensor *forcetorque_sensor,
-      std::string const &name, std::string const &frame_id);
+    barrett::ForceTorqueSensor *forcetorque_sensor,
+    std::string const &forcetorque_name, std::string const &accelerometer_name,
+    std::string const &frame_id);
   virtual ~ForceTorqueSensorHW();
 
   virtual void registerHandles(BarrettInterfaces &interfaces);
@@ -28,19 +29,33 @@ public:
 private:
   BARRETT_UNITS_FIXED_SIZE_TYPEDEFS;
 
-  static int const STATE_REQUEST_SENT;
-  static int const STATE_RECEIVED_FORCE;
-  static int const STATE_RECEIVED_TORQUE;
-  static int const STATE_IDLE;
+  static int const ACCEL_REQUEST_SENT;
+  static int const ACCEL_IDLE;
 
-  std::string name_;
+  static int const FORCETORQUE_REQUEST_SENT;
+  static int const FORCETORQUE_RECEIVED_FORCE;
+  static int const FORCETORQUE_RECEIVED_TORQUE;
+  static int const FORCETORQUE_IDLE;
+
+  std::string forcetorque_name_;
+  std::string accelerometer_name_;
   std::string frame_id_;
   cf_type force_;
   ct_type torque_;
   ca_type accel_;
-  int state_;
 
-  ::barrett::ForceTorqueSensor *sensor_;
+  bool realtime_;
+  int accel_state_;
+  int ft_state_;
+
+  barrett::ForceTorqueSensor *sensor_;
+
+  void requestForceTorque();
+  void receiveForceTorque(bool blocking);
+
+  void requestAccel();
+  void receiveAccel(bool blocking);
+
 };
 
 }
