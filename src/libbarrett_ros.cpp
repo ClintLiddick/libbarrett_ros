@@ -29,6 +29,7 @@
 #include <boost/array.hpp>
 #include <boost/format.hpp>
 #include <boost/foreach.hpp>
+#include <boost/assign/list_of.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
@@ -50,52 +51,103 @@
 
 #include <libbarrett_ros/BarrettRobotHW.h>
 #include <libbarrett_ros/ForceTorqueSensorHW.h>
+#include <libbarrett_ros/HandHW.h>
 #include <libbarrett_ros/WamHW.h>
+#include <libbarrett_ros/params.h>
 
 using ::barrett::ProductManager;
 using ::libbarrett_ros::BarrettRobotHW;
 using ::libbarrett_ros::ForceTorqueSensorHW;
 using ::libbarrett_ros::WamHW;
+using ::libbarrett_ros::get_value;
+using ::libbarrett_ros::get_or_throw;
+using ::libbarrett_ros::get_or_default;
 using ::XmlRpc::XmlRpcValue;
+
+struct ConfigurationInfo {
+  std::string configuration_path;
+
+  std::vector<std::string> wam_joint_names;
+
+  boost::array<boost::array<std::string, NUM_FINGER_JOINTS>,
+    NUM_FINGERS> hand_finger_joint_names;
+  boost::array<std::string, NUM_SPREAD_JOINTS> hand_spread_joint_names;
+
+  std::string forcetorque_wrench_name;
+  std::string forcetorque_accel_name;
+};
 
 static std::vector<std::string> get_configuration_paths(
     XmlRpcValue &configs_xmlrpc
   )
 {
-  using ::boost::format;
-  using ::boost::str;
-  using ::boost::filesystem::is_directory;
-  using ::boost::filesystem::is_regular_file;
+  using boost::assign::list_of;
+  using boost::format;
+  using boost::str;
+  using boost::filesystem::is_directory;
+  using boost::filesystem::is_regular_file;
 
-  std::vector<std::string> configs;
+  static std::set<int> const all_wam_types = list_of(0)(3)(4)(7);
+  static std::vector<std::string> const default_wam_joint_names
+    = list_of("wam_joint1")("wam_joint2")("wam_joint3")("wam_joint4")
+             ("wam_joint5")("wam_joint6")("wam_joint7");
+  static boost::array<std::string, NUM_SPREAD_JOINTS>
+    default_hand_spread_joint_names = list_of("hand_spread_joint1");
+                                             ("hand_spread_joint2");
 
-  switch (configs_xmlrpc.getType()) {
-  case XmlRpcValue::TypeArray:
-    ROS_INFO_STREAM("Found " << configs_xmlrpc.size() << " configuration file(s).");
+  if (configs_xmlrpc.getType() != XmlRpcValue::TypeArray) {
+    throw std::runtime_error("Configurations must be an array>");
+  }
+  ROS_INFO_STREAM(
+    "Found " << configs_xmlrpc.size() << " configuration file(s).");
 
-    for (int i = 0; i < configs_xmlrpc.size(); ++i) {
-      XmlRpcValue &config_xmlrpc = configs_xmlrpc[i];
+  std::vector<ConfigurationInfo> configs(configs_xmlrpc.size());
 
-      if (config_xmlrpc.getType() == XmlRpcValue::TypeString) {
-        configs.push_back(config_xmlrpc);
-      } else {
-        throw std::runtime_error("Configuration file path is not a string.");
-      }
+  for (int i = 0; i < configs_xmlrpc.size(); ++i) {
+    XmlRpcValue &config_xmlrpc = configs_xmlrpc[i];
+    ConfigurationInfo &info = configs[i];
+
+    info.configuration_path
+      = get_or_throw<std::string>(config_xmlrpc, "configuration_path");
+
+    // WAM parameters.
+    if (configs_xmlrpc.hasMember("wam_joint_names")) {
+      info.wam_joint_names
+        = get_value<std::vector<std::string> >("wam_joint_names");
+    } else {
+      info.wam_joint_names = default_wam_joint_names;
     }
-    break;
 
-  case XmlRpcValue::TypeString:
-    ROS_INFO("Found one configuration file.");
-    configs.push_back(configs_xmlrpc);
-    break;
+    // Hand parameters.
+    if (configs_xmlrpc.hasMember("hand_finger_joint_names")) {
+      info.hand_finger_joint_names = get_value<boost::array<
+          boost::array<std::string, NUM_FINGER_JOINTS>,
+        NUM_FINGERS> >(configs_xmlrpc);
+    } else {
+      // TODO: Default values.
+    }
 
-  case XmlRpcValue::TypeInvalid:
-    ROS_INFO("Using default configuration file.");
-    configs.push_back(::barrett::EtcPathRelative("default.conf"));
-    break;
+    if (configs_xmlrpc.hasMember("hand_spread_joint_names")) {
+      info.hand_spread_joint_names = get_value<
+        boost::array<std::string, NUM_SPREAD_JOINTS> >(configs_xmlrpc);
+    } else {
+      // TODO: Default values.
+    }
 
-  default:
-    throw std::runtime_error("Invalid configurations.");
+    // Force/torque sensor parameters.
+    info.forcetorque_wrench_name = get_or_default<std::string>(config_xmlrpc,
+      "forcetorque_wrench_name", str(format("ft_wrench%d") % i));
+    info.forcetorque_accel_name = get_or_default<std::string>(config_xmlrpc,
+      "forcetorque_accel_name", str(format("ft_accelerometer%d") % i));
+  }
+#if 0
+    //
+    XmlRpcValue &path_xmlrpc = config_xmlrpc["configuration_path"];
+    if (path_xmlrpc.getType() == XmlRpcValue::TypeString) {
+      config_info.configuration_path = static_cast<std::string>(path_xmlrpc);
+    } else {
+      throw std::runtime_error("Configuration file path is not a string.");
+    }
   }
 
   // Run some sanity checks to catch common mistakes.
@@ -111,8 +163,9 @@ static std::vector<std::string> get_configuration_paths(
         format("Configuration path '%s' is not a file.") % config_path));
     }
   }
+#endif
 
-  return configs;
+  return std::vector<std::string>();
 }
 
 static void initialize_product_manager(
