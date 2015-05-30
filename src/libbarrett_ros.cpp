@@ -107,8 +107,20 @@ static std::vector<std::string> get_configuration_paths(
     XmlRpcValue &config_xmlrpc = configs_xmlrpc[i];
     ConfigurationInfo &info = configs[i];
 
+    // Configuration path. We perform some sanity checks here to produce
+    // helpful error messages.
     info.configuration_path
       = get_or_throw<std::string>(config_xmlrpc, "configuration_path");
+    if (is_directory(info.configuration_path)) {
+      throw std::runtime_error(str(
+        format("Configuration path '%s' is a directory, but should be a file."
+               " Did you forget to include 'default.conf'?")
+          % info.configuration_path));
+    } else if (!is_regular_file(info.configuration_path)) {
+      throw std::runtime_error(str(
+        format("Configuration path '%s' is not a file.")
+          % info.configuration_path));
+    }
 
     // WAM parameters.
     if (configs_xmlrpc.hasMember("wam_joint_names")) {
@@ -140,31 +152,8 @@ static std::vector<std::string> get_configuration_paths(
     info.forcetorque_accel_name = get_or_default<std::string>(config_xmlrpc,
       "forcetorque_accel_name", str(format("ft_accelerometer%d") % i));
   }
-#if 0
-    //
-    XmlRpcValue &path_xmlrpc = config_xmlrpc["configuration_path"];
-    if (path_xmlrpc.getType() == XmlRpcValue::TypeString) {
-      config_info.configuration_path = static_cast<std::string>(path_xmlrpc);
-    } else {
-      throw std::runtime_error("Configuration file path is not a string.");
-    }
-  }
 
-  // Run some sanity checks to catch common mistakes.
-  for (size_t i = 0; i < configs.size(); ++i) {
-    std::string const &config_path = configs[i];
-
-    if (is_directory(config_path)) {
-      throw std::runtime_error(str(
-        format("Configuration path '%s' is a directory, but should be a file."
-               " Did you forget to include 'default.conf'?") % config_path));
-    } else if (!is_regular_file(config_path)) {
-      throw std::runtime_error(str(
-        format("Configuration path '%s' is not a file.") % config_path));
-    }
-  }
-#endif
-
+  // TODO: Return a vector of ConfigurationInfo.
   return std::vector<std::string>();
 }
 
