@@ -1,6 +1,8 @@
 # libbarrett_ros
 libbarrett_ros provides a ros_control hardware interface for [Barrett Technology](http://www.barrett.com/)'s products. This library was developed by the [Personal Robotics Lab](https://personalrobotics.ri.cmu.edu/) at Carnegie Mellon University in collaboration with [Barrett Technology](http://www.barrett.com/).
 
+> **WARNING:** libbarrett_ros is under heavy development and has not been fully tested. Please contact [herb-hardware@lists.andrew.cmu.edu](mailto:herb-hardware@lists.andrew.cmu.edu) if you are interested in using or contributing to this package.
+
 ## Dependencies
 This package requires [ROS](http://www.ros.org/), [ros_control](http://wiki.ros.org/ros_control), and [libbarrett](https://github.com/personalrobotics/libbarrett) to be installed. We have tested libbarrett_ros using ROS Hydro on Ubuntu 12.04 and ROS Indigo on Ubuntu 14.04.
 
