@@ -36,3 +36,8 @@ You will most likely want to load one or more ros_control controllers. See [the 
 
 ## Examples
 This package includes an example configuration for HERB, a bimanual mobile manipulator that has two Barrett WAMs. Each WAM is equipped with a Barrett force/torque sensor and a BarrettHand. An [example launch file](https://github.com/personalrobotics/libbarrett_ros/blob/ros_control/launch/wam_control.launch) for controlling HERB is available in the `launch/` directory. This loads ROS parameters from a [YAML file](https://github.com/personalrobotics/libbarrett_ros/blob/ros_control/config/wam_config.yaml) in the `config/` directory. HERB's libbarrett configuration is [available in the `herb_launch` repository](https://github.com/personalrobotics/herb_launch/tree/master/libbarrett_config).
+
+You can start HERB's controller using `roslaunch`:
+```bash
+roslaunch libbarrett_ros wam_control.launch
+```
