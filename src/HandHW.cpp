@@ -10,8 +10,7 @@ HandHW::HandHW(barrett::Hand *hand)
 }
 
 void HandHW::registerHandles(BarrettInterfaces &interfaces)
-{
-  for (size_t ifinger = 0; ifinger < NUM_FINGERS; ++ifinger) {
+{ for (size_t ifinger = 0; ifinger < NUM_FINGERS; ++ifinger) {
     std::stringstream inner_name, outer_name;
     inner_name << "j" << ifinger << "0";
     outer_name << "j" << ifinger << "1";
@@ -104,12 +103,18 @@ void HandHW::requestOther()
 
   PuckGroup const &group = hand_->getPuckGroup();
 
+  // NOTE: OWD also request TEMP, THERM, and MODE.
 
-#if 0
-  if (hand_->hasFingertipTorqueSensors()) {
+  if (!strain_pending_.empty() && hand_->hasFingertipTorqueSensors()) {
 		group.sendGetPropertyRequest(group.getPropertyId(Puck::SG));
+
+    for (size_t i = 0; i < group.numPucks(); ++i) {
+      strain_pending_.push_back(i);
+    }
   }
 
+  // TODO: Tactile sensors are disabled to save bandwidth.
+#if 0
 	if (hand_->hasTactSensors()) {
 		group.setProperty(Puck::TACT, TactilePuck::FULL_FORMAT);
 	}
@@ -118,10 +123,41 @@ void HandHW::requestOther()
 
 void HandHW::receiveOther()
 {
+  using barrett::Puck;
+  using barrett::PuckGroup;
+
+  // Wait for an SG reply from one or more finger pucks.
+  if (!strain_pending_.empty()) {
+    PuckGroup const &group = hand_->getPuckGroup();
+    barrett::bus::CommunicationsBus const &bus = group.getPucks()[0]->getBus();
+    int const prop_id = group.getPropertyId(Puck::SG);
+
+    std::list<size_t>::iterator it = strain_pending_.begin();
+    while (it != strain_pending_.end()) {
+      size_t const finger_index = *it;
+      int const ret = Puck::receiveGetPropertyReply<Puck::StandardParser>(
+        bus, group.getPuckId(finger_index),
+        prop_id, &strain_[finger_index],
+        false, realtime_
+      );
+
+      // We received a response from this puck; stop waiting for it.
+      if (ret == 0) {
+        it = strain_pending_.erase(it);
+      }
+      // Timed out. Check again in the next control cycle.
+      else if (ret == 1) {
+        ++it;
+      } else {
+        throw std::runtime_error("Failed to receive acceleration.");
+      }
+    }
+  }
 }
 
 void HandHW::write()
 {
+  // TODO: How do we want to control the hand? Torques? Or high-level commands?
 }
 
 void HandHW::halt()

@@ -1,5 +1,6 @@
 #ifndef LIBBARRETT_ROS_HANDHW_H_
 #define LIBBARRETT_ROS_HANDHW_H_
+#include <list>
 #include <boost/array.hpp>
 #include <barrett/products/hand.h>
 #include <libbarrett_ros/BarrettBaseHW.h>
@@ -43,8 +44,12 @@ private:
   std::vector<
     barrett::MotorPuck::CombinedPositionParser<
       int>::result_type> position_raw_;
+
   boost::array<FingerState, NUM_FINGERS> state_;
   JointState spread_state_;
+
+  std::list<size_t> strain_pending_;
+  boost::array<int, NUM_FINGERS> strain_;
 
   bool realtime_;
 };
