@@ -1,28 +1,22 @@
 <?xml version="1.0"?>
-<package>
+<package format="2">
   <name>libbarrett_ros</name>
   <version>0.0.0</version>
-  <description>The libbarrett_ros package</description>
-
-  <maintainer email="hm@barrett.com">robot</maintainer>
-
+  <description>
+    libbarrett_ros provides a ros_control hardware interface for Barrett
+    Technology's products.
+  </description>
+  <maintainer email="mkoval@cs.cmu.edu">Michael Koval</maintainer>
+  <author email="mkoval@cs.cmu.edu">Michael Koval</author>
+  <author email="amj1@andrew.cmu.edu">Aaron Johnson</author>
+  <author email="hm@barrett.com">Hariharasudan Malaichamee</author>
   <license>BSD</license>
-
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>cmake_modules</build_depend>
-  <build_depend>roscpp</build_depend>
-  <build_depend>rospy</build_depend>
-  <build_depend>wam_msgs</build_depend>
-  <build_depend>message_generation</build_depend>
-  <build_depend>bullet</build_depend>
-  <build_depend>tf</build_depend>
-  <!-- build_depend>ros_control</build_depend -->
-  <!-- run_depend>ros_control</run_depend -->
-  <run_depend>tf</run_depend>
-  <run_depend>bullet</run_depend>
-  <run_depend>message_runtime</run_depend>
-  <run_depend>wam_msgs</run_depend>
-  <run_depend>roscpp</run_depend>
-  <run_depend>rospy</run_depend>
-
+  <depend>boost</depend>
+  <depend>roscpp</depend>
+  <depend>libbarrett</depend>
+  <depend>control_toolbox</depend>
+  <depend>controller_manager</depend>
+  <depend>hardware_interface</depend>
 </package>

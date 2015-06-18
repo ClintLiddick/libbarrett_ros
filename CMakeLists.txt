@@ -1,39 +1,33 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(libbarrett_ros)
 
-#find_package(PkgConfig REQUIRED)
-#pkg_check_modules(BULLET bullet)
-
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  cmake_modules
-  std_msgs
-  tf
-  message_generation
-  controller_manager
   control_toolbox
-  urdf
+  controller_manager
+  hardware_interface
+  joint_limits_interface
+  roscpp
+  transmission_interface
 )
 
+find_package(Boost REQUIRED)
 find_package(Barrett REQUIRED)
-find_package(Eigen REQUIRED)
 
-catkin_package(
-  CATKIN_DEPENDS 
-  message_runtime
-  wam_msgs
-  tf
-  LIBRARIES ${PROJECT_NAME}
-)
+catkin_package()
 
 include_directories(
   include
-  ${BARRETT_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${BARRETT_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 )
-link_directories(${BARRETT_LIB_DIRS})
-add_definitions(${BARRETT_DEFINITIONS})
+link_directories(
+  ${BARRETT_LIB_DIRS}
+  ${Boost_LIBRARY_DIRS}
+)
+add_definitions(
+  ${BARRETT_DEFINITIONS}
+)
 
 add_executable(${PROJECT_NAME}
   src/libbarrett_ros.cpp
@@ -44,9 +38,5 @@ add_executable(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${BARRETT_LIBRARIES}
+  ${Boost_LIBRARIES}
 )
-add_dependencies(${PROJECT_NAME}
-  ${catkin_EXPORTED_TARGETS}
-  wam_msgs_gencpp
-)
-
