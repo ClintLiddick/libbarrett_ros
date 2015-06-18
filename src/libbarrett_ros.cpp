@@ -33,7 +33,6 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
-#include <barrett/config.h>
 #include <barrett/exception.h>
 #include <barrett/systems.h>
 
