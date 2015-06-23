@@ -179,17 +179,17 @@ static void initialize_product_manager(
     ROS_INFO("Found a 7-DOF WAM.");
     robot.add(
       make_shared<WamHW<7> >(
-        pm.getWam7(wait_for_shift_activate)));
+        pm.getWam7(wait_for_shift_activate), false));
   } else if (pm.foundWam4()) {
     ROS_INFO("Found a 4-DOF WAM.");
     robot.add(
       make_shared<WamHW<4> >(
-        pm.getWam4(wait_for_shift_activate)));
+        pm.getWam4(wait_for_shift_activate), false));
   } else if (pm.foundWam3()) {
     ROS_INFO("Found a 3-DOF WAM.");
     robot.add(
       make_shared<WamHW<3> >(
-        pm.getWam3(wait_for_shift_activate)));
+        pm.getWam3(wait_for_shift_activate), false));
   }
 
   if (pm.foundHand()) {
