@@ -1,5 +1,6 @@
 #ifndef LIBBARRETT_ROS_TASKS_ACCELERATIONTASK_H_
 #define LIBBARRETT_ROS_TASKS_ACCELERATIONTASK_H_
+#include <barrett/units.h>
 #include <libbarrett_ros/Task.h>
 
 namespace barrett {

@@ -1,5 +1,6 @@
 #ifndef LIBBARRETT_ROS_TASKS_FORCETORQUETASK_H_
 #define LIBBARRETT_ROS_TASKS_FORCETORQUETASK_H_
+#include <barrett/units.h>
 #include <libbarrett_ros/Task.h>
 
 namespace barrett {
