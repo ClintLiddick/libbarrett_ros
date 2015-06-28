@@ -48,6 +48,7 @@
 #include <hardware_interface/robot_hw.h>
 #include <controller_manager/controller_manager.h>
 
+#include <libbarrett_ros/TaskSet.h> // for TaskSet
 #include <libbarrett_ros/BarrettRobotHW.h>
 #include <libbarrett_ros/ForceTorqueSensorHW.h>
 #include <libbarrett_ros/HandHW.h>
@@ -55,26 +56,58 @@
 #include <libbarrett_ros/params.h>
 #include <libbarrett_ros/BusInfo.h>
 
-using ::barrett::ProductManager;
-using ::libbarrett_ros::BarrettRobotHW;
-using ::libbarrett_ros::ForceTorqueSensorHW;
-using ::libbarrett_ros::WamHW;
-using ::libbarrett_ros::BusInfo;
-using ::libbarrett_ros::get_value;
-using ::libbarrett_ros::get_or_throw;
-using ::libbarrett_ros::get_or_default;
-using ::XmlRpc::XmlRpcValue;
+using barrett::ProductManager;
+using libbarrett_ros::BarrettBaseHW;
+using libbarrett_ros::BarrettRobotHW;
+using libbarrett_ros::ForceTorqueSensorHW;
+using libbarrett_ros::WamHW;
+using libbarrett_ros::BusInfo;
+using libbarrett_ros::get_value;
+using libbarrett_ros::get_or_throw;
+using libbarrett_ros::get_or_default;
+using libbarrett_ros::Task;
+using XmlRpc::XmlRpcValue;
 
-static void initialize_product_manager(
-    ProductManager &pm,
-    BarrettRobotHW &robot
-  )
+struct Bus {
+  boost::shared_ptr<ProductManager> product_manager;
+  std::vector<boost::shared_ptr<BarrettBaseHW> > hardware;
+  libbarrett_ros::TaskSet tasks;
+};
+
+template <class T, size_t N>
+static boost::array<T, N> to_array(std::vector<T> const &v)
 {
-  using ::boost::make_shared;
+  using boost::format;
+  using boost::str;
+
+  if (v.size() != N) {
+    throw std::runtime_error(str(
+      format("Expected array to be of length %d; got %d.") % N % v.size()));
+  }
+
+  boost::array<T, N> output;
+  for (size_t i = 0; i < N; ++i) {
+    output[i] = v[i];
+  }
+  return output;
+}
+
+static void InitializeBus(BusInfo const &bus_info, Bus *bus)
+{
+  using boost::make_shared;
 
   // TODO: Can we safely set both of these to false?
   static bool const prompt_on_zeroing = true;
   static bool const wait_for_shift_activate = true;
+
+  // Initialize the ProductManager from configuration files.
+  std::string const &config_path = bus_info.configuration_path;
+  ROS_INFO_STREAM("Loading configuration file '" << config_path << "'.");
+  bus->product_manager = make_shared<ProductManager>(config_path.c_str());
+
+  // Stop the libbarrett thread. We'll handle everything oruselves.
+  ProductManager &pm = *bus->product_manager;
+  pm.getExecutionManager()->stop();
 
   // TODO: Can we defer some of this to later?
   pm.waitForWam(prompt_on_zeroing);
@@ -83,22 +116,32 @@ static void initialize_product_manager(
   // TODO: What does this do?
   pm.getSafetyModule()->waitForMode(::barrett::SafetyModule::IDLE);
 
-  // TODO: Don't hard-code joint names.
+  bus->hardware.reserve(3);
+
   if (pm.foundWam7()) {
     ROS_INFO("Found a 7-DOF WAM.");
-    robot.add(
+    boost::array<std::string, 7> const wam_joint_names
+      = to_array<std::string, 7>(bus_info.wam_joint_names);
+
+    bus->hardware.push_back(
       make_shared<WamHW<7> >(
-        pm.getWam7(wait_for_shift_activate), false));
+        pm.getWam7(wait_for_shift_activate), false, &wam_joint_names));
   } else if (pm.foundWam4()) {
     ROS_INFO("Found a 4-DOF WAM.");
-    robot.add(
+    boost::array<std::string, 4> const wam_joint_names
+      = to_array<std::string, 4>(bus_info.wam_joint_names);
+
+    bus->hardware.push_back(
       make_shared<WamHW<4> >(
-        pm.getWam4(wait_for_shift_activate), false));
+        pm.getWam4(wait_for_shift_activate), false, &wam_joint_names));
   } else if (pm.foundWam3()) {
     ROS_INFO("Found a 3-DOF WAM.");
-    robot.add(
+    boost::array<std::string, 3> const wam_joint_names
+      = to_array<std::string, 3>(bus_info.wam_joint_names);
+
+    bus->hardware.push_back(
       make_shared<WamHW<3> >(
-        pm.getWam3(wait_for_shift_activate), false));
+        pm.getWam3(wait_for_shift_activate), false, &wam_joint_names));
   }
 
   if (pm.foundHand()) {
@@ -110,12 +153,22 @@ static void initialize_product_manager(
 
   if (pm.foundForceTorqueSensor()) {
     ROS_INFO("Found a force/torque sensor.");
-    // TODO: Don't hard-code the name and frame_id.
-    robot.add(
+    bus->hardware.push_back(
       make_shared<ForceTorqueSensorHW>(
-        pm.getForceTorqueSensor(), false, "forcetorque", "accelerometer",
-        "ft_sensor_frame"));
+        pm.getForceTorqueSensor(), false,
+        bus_info.forcetorque_wrench_name,
+        bus_info.forcetorque_accel_name,
+        bus_info.forcetorque_frame_id));
   }
+
+  // Aggregate all of the tasks on this bus.
+  BOOST_FOREACH (boost::shared_ptr<BarrettBaseHW> const &hw, bus->hardware) {
+    BOOST_FOREACH (Task *task, hw->tasks()) {
+      bus->tasks.AddTask(task);
+    }
+  }
+
+  // TODO: Create a schedule from the ScheduleInfo.
 }
 
 int main(int argc, char **argv)
@@ -132,45 +185,44 @@ int main(int argc, char **argv)
   spinner.start();
 
   // Read parameters.
-  ::XmlRpc::XmlRpcValue configs_xmlrpc;
+  XmlRpc::XmlRpcValue root_xmlrpc;
+  ros::param::get("~", root_xmlrpc);
+
   std::vector<BusInfo> bus_infos;
-
-  ::ros::NodeHandle nh_priv("~");
-  nh_priv.getParam("buses", configs_xmlrpc);
-
   try {
     // TODO: This should operate on teh root XmlRpcValue, not "buses".
-    bus_infos = get_or_throw<std::vector<BusInfo> >(configs_xmlrpc, "buses");
+    bus_infos = get_or_throw<std::vector<BusInfo> >(root_xmlrpc, "buses");
     ROS_INFO_STREAM("Found" << bus_infos.size() << " communication buses.");
   } catch (std::runtime_error const &e) {
-    ROS_FATAL("Failed loading configurations: %s", e.what());
+    ROS_FATAL("Failed loading parameters: %s", e.what());
     return 1;
   }
 
-  // Initialize libbarrett.
-  BarrettRobotHW robot;
-  std::vector<shared_ptr<ProductManager> > product_managers;
-  product_managers.reserve(bus_infos.size());
-
-  BOOST_FOREACH (BusInfo const &bus_info, bus_infos) {
-    std::string const &config_path = bus_info.configuration_path;
-    ROS_INFO_STREAM("Loading configuration file '" << config_path << "'.");
-
-    shared_ptr<ProductManager> const product_manager
-      = make_shared<ProductManager>(config_path.c_str());
-
-    initialize_product_manager(*product_manager, robot);
-    product_managers.push_back(product_manager);
-
-    product_manager->getExecutionManager()->stop();
+  // Initialize the communication buses.
+  std::vector<Bus> buses(bus_infos.size());
+  for (size_t i = 0; i < bus_infos.size(); ++i) {
+    ROS_INFO_STREAM("Initializing communication bus " << i << " of "
+                    << bus_infos.size() << ".");
+    InitializeBus(bus_infos[i], &buses[i]);
   }
 
   // Initialize ros_control.
+  ROS_INFO("Initializing the RobotHW interface.");
+  BarrettRobotHW robot;
+
+  BOOST_FOREACH (Bus const &bus, buses) {
+    BOOST_FOREACH (boost::shared_ptr<BarrettBaseHW> const &hw, bus.hardware) {
+      robot.add(hw);
+    }
+  }
+
   robot.initialize();
-  ::controller_manager::ControllerManager cm(&robot);
+
+  ROS_INFO("Initializing the ControllerManager.");
+  controller_manager::ControllerManager cm(&robot);
 
   // Start the control loop. Default to 500 Hz.
-  // TODO: Figure out threading and real-time safety.
+  // TODO: ros::Rate and ros::Time are likely not realtime-safe.
   ROS_INFO("Entering control loop.");
 
   ros::Duration const period(0, 500000000);

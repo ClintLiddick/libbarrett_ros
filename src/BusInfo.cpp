@@ -82,6 +82,8 @@ BusInfo get_value_impl<BusInfo>::call(XmlRpcValue const &xmlrpc)
     xmlrpc, "forcetorque_wrench_name", "ft_wrench");
   bus_info.forcetorque_accel_name = get_or_default<std::string>(
     xmlrpc, "forcetorque_accel_name", "ft_accel");
+  bus_info.forcetorque_frame_id = get_or_default<std::string>(
+    xmlrpc, "forcetorque_frame_id", "wam7");
 }
 
 } // namespace libbarrett_ros

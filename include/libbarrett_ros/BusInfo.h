@@ -5,7 +5,6 @@
 #include <boost/array.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <libbarrett_ros/params.h>
-#include <libbarrett_ros/TaskSet.h> // for TaskSet
 #include <libbarrett_ros/HandHW.h> // for NUM_*_JOINTS
 
 namespace libbarrett_ros {
@@ -35,8 +34,8 @@ struct BusInfo {
 
   std::string forcetorque_wrench_name;
   std::string forcetorque_accel_name;
+  std::string forcetorque_frame_id;
 
-  TaskSet tasks;
   ScheduleInfo schedule;
 };
 
