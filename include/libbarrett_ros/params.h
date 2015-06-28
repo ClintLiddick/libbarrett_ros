@@ -1,5 +1,6 @@
 #ifndef LIBBARRETT_ROS_PARAMS_H_
 #define LIBBARRETT_ROS_PARAMS_H_
+#include <XmlRpcValue.h>
 
 namespace libbarrett_ros {
 

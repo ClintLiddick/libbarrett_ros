@@ -53,108 +53,17 @@
 #include <libbarrett_ros/HandHW.h>
 #include <libbarrett_ros/WamHW.h>
 #include <libbarrett_ros/params.h>
+#include <libbarrett_ros/BusInfo.h>
 
 using ::barrett::ProductManager;
 using ::libbarrett_ros::BarrettRobotHW;
 using ::libbarrett_ros::ForceTorqueSensorHW;
 using ::libbarrett_ros::WamHW;
+using ::libbarrett_ros::BusInfo;
 using ::libbarrett_ros::get_value;
 using ::libbarrett_ros::get_or_throw;
 using ::libbarrett_ros::get_or_default;
 using ::XmlRpc::XmlRpcValue;
-
-struct ConfigurationInfo {
-  std::string configuration_path;
-
-  std::vector<std::string> wam_joint_names;
-
-  boost::array<boost::array<std::string, NUM_FINGER_JOINTS>,
-    NUM_FINGERS> hand_finger_joint_names;
-  boost::array<std::string, NUM_SPREAD_JOINTS> hand_spread_joint_names;
-
-  std::string forcetorque_wrench_name;
-  std::string forcetorque_accel_name;
-};
-
-static std::vector<std::string> get_configuration_paths(
-    XmlRpcValue &configs_xmlrpc
-  )
-{
-  using boost::assign::list_of;
-  using boost::format;
-  using boost::str;
-  using boost::filesystem::is_directory;
-  using boost::filesystem::is_regular_file;
-
-  static std::set<int> const all_wam_types = list_of(0)(3)(4)(7);
-  static std::vector<std::string> const default_wam_joint_names
-    = list_of("wam_joint1")("wam_joint2")("wam_joint3")("wam_joint4")
-             ("wam_joint5")("wam_joint6")("wam_joint7");
-  static boost::array<std::string, NUM_SPREAD_JOINTS>
-    default_hand_spread_joint_names = list_of("hand_spread_joint1");
-                                             ("hand_spread_joint2");
-
-  if (configs_xmlrpc.getType() != XmlRpcValue::TypeArray) {
-    throw std::runtime_error("Configurations must be an array>");
-  }
-  ROS_INFO_STREAM(
-    "Found " << configs_xmlrpc.size() << " configuration file(s).");
-
-  std::vector<ConfigurationInfo> configs(configs_xmlrpc.size());
-
-  for (int i = 0; i < configs_xmlrpc.size(); ++i) {
-    XmlRpcValue &config_xmlrpc = configs_xmlrpc[i];
-    ConfigurationInfo &info = configs[i];
-
-    // Configuration path. We perform some sanity checks here to produce
-    // helpful error messages.
-    info.configuration_path
-      = get_or_throw<std::string>(config_xmlrpc, "configuration_path");
-    if (is_directory(info.configuration_path)) {
-      throw std::runtime_error(str(
-        format("Configuration path '%s' is a directory, but should be a file."
-               " Did you forget to include 'default.conf'?")
-          % info.configuration_path));
-    } else if (!is_regular_file(info.configuration_path)) {
-      throw std::runtime_error(str(
-        format("Configuration path '%s' is not a file.")
-          % info.configuration_path));
-    }
-
-    // WAM parameters.
-    if (configs_xmlrpc.hasMember("wam_joint_names")) {
-      info.wam_joint_names
-        = get_value<std::vector<std::string> >("wam_joint_names");
-    } else {
-      info.wam_joint_names = default_wam_joint_names;
-    }
-
-    // Hand parameters.
-    if (configs_xmlrpc.hasMember("hand_finger_joint_names")) {
-      info.hand_finger_joint_names = get_value<boost::array<
-          boost::array<std::string, NUM_FINGER_JOINTS>,
-        NUM_FINGERS> >(configs_xmlrpc);
-    } else {
-      // TODO: Default values.
-    }
-
-    if (configs_xmlrpc.hasMember("hand_spread_joint_names")) {
-      info.hand_spread_joint_names = get_value<
-        boost::array<std::string, NUM_SPREAD_JOINTS> >(configs_xmlrpc);
-    } else {
-      // TODO: Default values.
-    }
-
-    // Force/torque sensor parameters.
-    info.forcetorque_wrench_name = get_or_default<std::string>(config_xmlrpc,
-      "forcetorque_wrench_name", str(format("ft_wrench%d") % i));
-    info.forcetorque_accel_name = get_or_default<std::string>(config_xmlrpc,
-      "forcetorque_accel_name", str(format("ft_accelerometer%d") % i));
-  }
-
-  // TODO: Return a vector of ConfigurationInfo.
-  return std::vector<std::string>();
-}
 
 static void initialize_product_manager(
     ProductManager &pm,
@@ -224,14 +133,15 @@ int main(int argc, char **argv)
 
   // Read parameters.
   ::XmlRpc::XmlRpcValue configs_xmlrpc;
-  ::std::vector<std::string> config_paths;
+  std::vector<BusInfo> bus_infos;
 
   ::ros::NodeHandle nh_priv("~");
-  nh_priv.getParam("configurations", configs_xmlrpc);
+  nh_priv.getParam("buses", configs_xmlrpc);
 
   try {
-    config_paths = get_configuration_paths(configs_xmlrpc);
-    ROS_INFO_STREAM("Loading " << config_paths.size() << " config files.");
+    // TODO: This should operate on teh root XmlRpcValue, not "buses".
+    bus_infos = get_or_throw<std::vector<BusInfo> >(configs_xmlrpc, "buses");
+    ROS_INFO_STREAM("Found" << bus_infos.size() << " communication buses.");
   } catch (std::runtime_error const &e) {
     ROS_FATAL("Failed loading configurations: %s", e.what());
     return 1;
@@ -240,9 +150,10 @@ int main(int argc, char **argv)
   // Initialize libbarrett.
   BarrettRobotHW robot;
   std::vector<shared_ptr<ProductManager> > product_managers;
-  product_managers.reserve(config_paths.size());
+  product_managers.reserve(bus_infos.size());
 
-  BOOST_FOREACH (std::string const &config_path, config_paths) {
+  BOOST_FOREACH (BusInfo const &bus_info, bus_infos) {
+    std::string const &config_path = bus_info.configuration_path;
     ROS_INFO_STREAM("Loading configuration file '" << config_path << "'.");
 
     shared_ptr<ProductManager> const product_manager
