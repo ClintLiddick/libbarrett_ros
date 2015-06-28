@@ -40,7 +40,7 @@ struct BusInfo {
   double utilization_warn;
   double utilization_error;
 
-  ScheduleInfo schedule;
+  ScheduleInfo schedule_info;
 };
 
 /*

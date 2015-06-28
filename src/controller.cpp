@@ -9,6 +9,7 @@
 #include <libbarrett_ros/BusInfo.h>
 #include <libbarrett_ros/ControlLoop.h>
 
+
 int main(int argc, char **argv)
 {
   using namespace libbarrett_ros;

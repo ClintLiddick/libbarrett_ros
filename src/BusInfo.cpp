@@ -92,6 +92,8 @@ BusInfo get_value_impl<BusInfo>::call(XmlRpcValue const &xmlrpc)
   bus_info.utilization_error
     = get_or_default<double>(xmlrpc, "utilization_threshold_error", 1.0);
 
+  bus_info.schedule_info = get_or_throw<ScheduleInfo>(xmlrpc, "schedule");
+
   return bus_info;
 }
 

@@ -134,7 +134,7 @@ void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
     }
   }
 
-  InitializeSchedule(tasks, bus_info.schedule, &bus->schedule);
+  InitializeSchedule(tasks, bus_info.schedule_info, &bus->schedule);
 }
 
 } // namespace libbarrett_ros
