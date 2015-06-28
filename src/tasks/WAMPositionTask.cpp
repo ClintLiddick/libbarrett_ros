@@ -24,6 +24,44 @@ WAMPositionTask<DOF>::~WAMPositionTask()
 }
 
 template <size_t DOF>
+std::string const &WAMPositionTask<DOF>::name() const
+{
+    static std::string const name = "wam_position";
+    return name;
+}
+
+template <size_t DOF>
+uint_fast32_t WAMPositionTask<DOF>::request_bits() const
+{
+  // TODO: Why does our request have a 3 byte payload?
+  // TODO: Barrett quotes 75 us for this.
+  // 47 bit header + 24 bits data (???)
+  return 47 + 24;
+}
+
+template <size_t DOF>
+uint_fast32_t WAMPositionTask<DOF>::receive_bits() const
+{
+  // Only the first four joints can have joint encoders.
+  static int const num_joint_encoders = std::min<int>(DOF, 4);
+
+  if (llwam_->hasJointEncoders()) {
+    // 47 bit header + 24 bits MP + 24 bits JP + 4 bits (???).
+    return 47 + DOF * 24 + num_joint_encoders * 24;
+  } else {
+    // 47 bit header + 24 bits MP
+    // TODO: Barrett quotes 75 us for this.
+    return 47 + DOF * 24;
+  }
+}
+
+template <size_t DOF>
+uint_fast32_t WAMPositionTask<DOF>::write_bits() const
+{
+  return 0; // don't write anything
+}
+
+template <size_t DOF>
 void WAMPositionTask<DOF>::Request()
 {
   llwam_->getPuckGroup().sendGetPropertyRequest(prop_id_);

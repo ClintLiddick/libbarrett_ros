@@ -15,6 +15,40 @@ WAMTorqueTask<DOF>::~WAMTorqueTask()
 }
 
 template <size_t DOF>
+std::string const &WAMTorqueTask<DOF>::name() const
+{
+  static std::string const name = "wam_torque";
+  return name;
+}
+
+template <size_t DOF>
+uint_fast32_t WAMTorqueTask<DOF>::request_bits() const
+{
+  return 0; // no request
+}
+
+template <size_t DOF>
+uint_fast32_t WAMTorqueTask<DOF>::receive_bits() const
+{
+  return 0; // no request
+}
+
+template <size_t DOF>
+uint_fast32_t WAMTorqueTask<DOF>::write_bits() const
+{
+  if (DOF <= 4) {
+    // One packed torque message of four 14-bit values:
+    // 47 bits header + 8 bytes payload
+    // TODO: Barrett quotes 125 us for this.
+    return 47 + 8 * 8;
+  } else {
+    // Two packed torque messages (see above).
+    // TODO: Barrett quotes 250 us for this.
+    return 2 * (47 + 8 * 8);
+  }
+}
+
+template <size_t DOF>
 void WAMTorqueTask<DOF>::Request()
 {
   // do nothing

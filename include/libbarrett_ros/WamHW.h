@@ -15,17 +15,21 @@ class WamHW : public BarrettBaseHW {
 public:
   WamHW(barrett::systems::Wam<DOF> *wam, bool realtime,
         boost::array<std::string, DOF> const *joint_names = NULL)
-    : position_task_(&wam->getLowLevelWam(), realtime,
+    : tasks_(2)
+    , position_task_(&wam->getLowLevelWam(), realtime,
         &state_position_motor_, &state_position_joint_, &state_position_best_)
     , torque_task_(&wam->getLowLevelWam(), realtime, &command_effort_)
     , llwam_(&wam->getLowLevelWam())
-    , state_position_motor_(std::numeric_limits<double>::max())
-    , state_position_joint_(std::numeric_limits<double>::max())
-    , state_position_best_(std::numeric_limits<double>::max())
+    , state_position_motor_(std::numeric_limits<double>::quiet_NaN())
+    , state_position_joint_(std::numeric_limits<double>::quiet_NaN())
+    , state_position_best_(std::numeric_limits<double>::quiet_NaN())
     , state_velocity_(0.)
     , state_effort_(0.)
     , command_effort_(0.)
   {
+    tasks_[0] = &position_task_;
+    tasks_[1] = &torque_task_;
+
     if (joint_names) {
       joint_names_ = *joint_names;
     } else {
@@ -37,6 +41,11 @@ public:
 
   virtual ~WamHW()
   {
+  }
+
+  virtual std::vector<Task *> const &tasks() const
+  {
+    return tasks_;
   }
 
   virtual void registerHandles(BarrettInterfaces &interfaces)
@@ -93,6 +102,7 @@ private:
 
   barrett::LowLevelWam<DOF> *llwam_;
 
+  std::vector<Task *> tasks_;
   WAMPositionTask<DOF> position_task_;
   WAMTorqueTask<DOF> torque_task_;
 

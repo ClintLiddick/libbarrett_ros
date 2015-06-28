@@ -18,6 +18,12 @@ public:
   AccelerationTask(barrett::Puck *puck, bool realtime, ca_type *accel);
   virtual ~AccelerationTask();
 
+  virtual std::string const &name() const;
+
+  virtual uint_fast32_t request_bits() const;
+  virtual uint_fast32_t receive_bits() const;
+  virtual uint_fast32_t write_bits() const;
+
   virtual void Request();
   virtual void Receive(bool blocking);
   virtual void Write();

@@ -16,6 +16,8 @@ public:
     std::string const &frame_id);
   virtual ~ForceTorqueSensorHW();
 
+  virtual std::vector<Task *> const &tasks() const;
+
   virtual void registerHandles(BarrettInterfaces &interfaces);
 
   virtual void requestCritical();
@@ -31,6 +33,7 @@ public:
 private:
   BARRETT_UNITS_FIXED_SIZE_TYPEDEFS;
 
+  std::vector<Task *> tasks_;
   ForceTorqueTask ft_task_;
   AccelerationTask accel_task_;
 

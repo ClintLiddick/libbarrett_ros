@@ -1,11 +1,13 @@
 #ifndef LIBBARRETT_ROS_BARRETTBASEHW_H_
 #define LIBBARRETT_ROS_BARRETTBASEHW_H_
+#include <vector>
 #include <hardware_interface/force_torque_sensor_interface.h>
 #include <hardware_interface/imu_sensor_interface.h>
 #include <hardware_interface/joint_command_interface.h>
 #include <hardware_interface/joint_state_interface.h>
 #include <hardware_interface/robot_hw.h>
 #include <transmission_interface/transmission_interface.h>
+#include <libbarrett_ros/Task.h>
 
 namespace libbarrett_ros {
 
@@ -32,6 +34,8 @@ public:
   virtual ~BarrettBaseHW()
   {
   }
+
+  virtual std::vector<Task *> const &tasks() const = 0;
 
   virtual void requestCritical() = 0;
   virtual void receiveCritical() = 0;

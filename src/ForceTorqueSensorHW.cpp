@@ -3,6 +3,7 @@
 
 using libbarrett_ros::BarrettBaseHW;
 using libbarrett_ros::ForceTorqueSensorHW;
+using libbarrett_ros::Task;
 
 ForceTorqueSensorHW::ForceTorqueSensorHW(
   ::barrett::ForceTorqueSensor *forcetorque_sensor,
@@ -11,7 +12,8 @@ ForceTorqueSensorHW::ForceTorqueSensorHW(
   std::string const &accelerometer_name,
   std::string const &frame_id
 )
-  : ft_task_(forcetorque_sensor->getPuck(), realtime, &force_, &torque_)
+  : tasks_(2)
+  , ft_task_(forcetorque_sensor->getPuck(), realtime, &force_, &torque_)
   , accel_task_(forcetorque_sensor->getPuck(), realtime, &accel_)
   , forcetorque_name_(forcetorque_name)
   , accelerometer_name_(accelerometer_name)
@@ -21,10 +23,17 @@ ForceTorqueSensorHW::ForceTorqueSensorHW(
   , sensor_(forcetorque_sensor)
   , realtime_(realtime)
 {
+  tasks_[0] = &ft_task_;
+  tasks_[1] = &accel_task_;
 }
 
 ForceTorqueSensorHW::~ForceTorqueSensorHW()
 {
+}
+
+std::vector<Task *> const &ForceTorqueSensorHW::tasks() const
+{
+  return tasks_;
 }
 
 void ForceTorqueSensorHW::registerHandles(BarrettInterfaces &interfaces)

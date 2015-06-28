@@ -28,6 +28,31 @@ ForceTorqueTask::~ForceTorqueTask()
 {
 }
 
+std::string const &ForceTorqueTask::name() const
+{
+    static std::string const name = "ft_wrench";
+    return name;
+}
+
+uint_fast32_t ForceTorqueTask::request_bits() const
+{
+  // 47 bit header + 1 byte data
+  // TODO: The Barrett docs imply that there are three payload bytes.
+  return 47 + 8;
+}
+
+uint_fast32_t ForceTorqueTask::receive_bits() const
+{
+  //   47 bit header + 6 bytes data for force
+  // + 47 bit header + 6 bytes data for torque
+  // + 1 byte (on the torque frame) if saturated
+  return 2 * (47 + 6 * 8) + 8;
+}
+
+uint_fast32_t ForceTorqueTask::write_bits() const
+{
+}
+
 void ForceTorqueTask::Request()
 {
   using barrett::Puck;

@@ -22,6 +22,30 @@ AccelerationTask::~AccelerationTask()
 {
 }
 
+std::string const &AccelerationTask::name() const
+{
+  static std::string const name = "ft_acceleration";
+  return name;
+}
+
+uint_fast32_t AccelerationTask::request_bits() const
+{
+  // 47 bit header + 1 byte data
+  // TODO: The Barrett docs imply that there are three payload bytes.
+  return 47 + 8;
+}
+
+uint_fast32_t AccelerationTask::receive_bits() const
+{
+  // 47 bit header + 6 bytes data
+  return 47 + 6 * 8;
+}
+
+uint_fast32_t AccelerationTask::write_bits() const
+{
+  return 0; // no write
+}
+
 void AccelerationTask::Request()
 {
   using barrett::Puck;

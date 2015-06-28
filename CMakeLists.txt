@@ -34,6 +34,8 @@ add_executable(${PROJECT_NAME}
   src/tasks/ForceTorqueTask.cpp
   src/tasks/WAMPositionTask.cpp
   src/tasks/WAMTorqueTask.cpp
+  src/Cycle.cpp
+  src/Schedule.cpp
   src/libbarrett_ros.cpp
   src/BarrettRobotHW.cpp
   src/ForceTorqueSensorHW.cpp 

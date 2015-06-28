@@ -19,6 +19,12 @@ public:
                   cf_type *force, ct_type *torque);
   virtual ~ForceTorqueTask();
 
+  virtual std::string const &name() const;
+
+  virtual uint_fast32_t request_bits() const;
+  virtual uint_fast32_t receive_bits() const;
+  virtual uint_fast32_t write_bits() const;
+
   virtual void Request();
   virtual void Receive(bool blocking);
   virtual void Write();
