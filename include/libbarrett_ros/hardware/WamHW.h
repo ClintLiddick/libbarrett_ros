@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <boost/array.hpp>
+#include <boost/format.hpp>
 #include <barrett/systems/wam.h>
 #include <libbarrett_ros/BarrettBaseHW.h>
 #include <libbarrett_ros/tasks/WAMPositionTask.h>
@@ -46,6 +47,15 @@ public:
   virtual std::vector<Task *> const &tasks() const
   {
     return tasks_;
+  }
+
+  virtual std::string const &name() const
+  {
+    using boost::format;
+    using boost::str;
+
+    static std::string const name = str(format("WAM%d") % DOF);
+    return name;
   }
 
   virtual void registerHandles(BarrettInterfaces &interfaces)

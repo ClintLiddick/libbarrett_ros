@@ -37,6 +37,8 @@ public:
 
   virtual std::vector<Task *> const &tasks() const = 0;
 
+  virtual std::string const &name() const = 0;
+
   virtual void halt() = 0;
 
   virtual void registerHandles(BarrettInterfaces &interfaces) = 0;

@@ -27,6 +27,8 @@ public:
 
   HandHW(barrett::Hand *hand);
 
+  virtual std::string const &name() const;
+
   virtual void requestCritical();
   virtual void receiveCritical();
 

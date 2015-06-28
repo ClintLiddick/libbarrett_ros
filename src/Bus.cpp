@@ -150,8 +150,8 @@ void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
       if (!result.second) {
         throw std::runtime_error(str(
           format("Found duplicate task with name '%s' in hardware"
-                 " interfaces %p and %p.")
-          % task->name() % result.first->second % hw.get()));
+                 " interfaces '%s' and '%s'.")
+          % task->name() % result.first->second->name() % hw->name()));
       }
 
       task_set.AddTask(task);

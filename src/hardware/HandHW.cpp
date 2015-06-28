@@ -9,6 +9,12 @@ HandHW::HandHW(barrett::Hand *hand)
 {
 }
 
+std::string const &HandHW::name() const
+{
+  static std::string const name = "BarrettHand";
+  return name;
+}
+
 void HandHW::registerHandles(BarrettInterfaces &interfaces)
 { for (size_t ifinger = 0; ifinger < NUM_FINGERS; ++ifinger) {
     std::stringstream inner_name, outer_name;

@@ -31,6 +31,12 @@ ForceTorqueSensorHW::~ForceTorqueSensorHW()
 {
 }
 
+std::string const &ForceTorqueSensorHW::name() const
+{
+  static std::string const name = "ForceTorqueSensor";
+  return name;
+}
+
 std::vector<Task *> const &ForceTorqueSensorHW::tasks() const
 {
   return tasks_;

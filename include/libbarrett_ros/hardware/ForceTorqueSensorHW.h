@@ -16,6 +16,7 @@ public:
     std::string const &frame_id);
   virtual ~ForceTorqueSensorHW();
 
+  virtual std::string const &name() const;
   virtual std::vector<Task *> const &tasks() const;
 
   virtual void registerHandles(BarrettInterfaces &interfaces);
