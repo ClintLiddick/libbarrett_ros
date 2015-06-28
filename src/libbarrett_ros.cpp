@@ -55,23 +55,29 @@
 #include <libbarrett_ros/WamHW.h>
 #include <libbarrett_ros/params.h>
 #include <libbarrett_ros/BusInfo.h>
+#include <libbarrett_ros/Schedule.h>
 
 using barrett::ProductManager;
 using libbarrett_ros::BarrettBaseHW;
 using libbarrett_ros::BarrettRobotHW;
 using libbarrett_ros::ForceTorqueSensorHW;
+using libbarrett_ros::Schedule;
 using libbarrett_ros::WamHW;
 using libbarrett_ros::BusInfo;
 using libbarrett_ros::get_value;
 using libbarrett_ros::get_or_throw;
 using libbarrett_ros::get_or_default;
 using libbarrett_ros::Task;
+using libbarrett_ros::TaskSet;
+using libbarrett_ros::Cycle;
+using libbarrett_ros::CycleInfo;
+using libbarrett_ros::ScheduleInfo;
 using XmlRpc::XmlRpcValue;
 
 struct Bus {
   boost::shared_ptr<ProductManager> product_manager;
   std::vector<boost::shared_ptr<BarrettBaseHW> > hardware;
-  libbarrett_ros::TaskSet tasks;
+  boost::shared_ptr<Schedule> schedule;
 };
 
 template <class T, size_t N>
@@ -90,6 +96,29 @@ static boost::array<T, N> to_array(std::vector<T> const &v)
     output[i] = v[i];
   }
   return output;
+}
+
+static boost::shared_ptr<Schedule> CreateSchedule(
+  TaskSet const &tasks, ScheduleInfo const &schedule_info)
+{
+  using boost::make_shared;
+
+  std::vector<Cycle> cycles(schedule_info.cycles.size());
+
+  for (size_t icycle = 0; icycle < schedule_info.cycles.size(); ++icycle) {
+    CycleInfo const &cycle_info = schedule_info.cycles[icycle];
+    Cycle &cycle = cycles[icycle];
+
+    BOOST_FOREACH (std::string const &task_name, cycle_info.required_tasks) {
+      cycle.AddTask(tasks.GetTask(task_name), true);
+    }
+
+    BOOST_FOREACH (std::string const &task_name, cycle_info.optional_tasks) {
+      cycle.AddTask(tasks.GetTask(task_name), false);
+    }
+  }
+
+  return boost::make_shared<Schedule>(cycles);
 }
 
 static void InitializeBus(BusInfo const &bus_info, Bus *bus)
@@ -162,13 +191,14 @@ static void InitializeBus(BusInfo const &bus_info, Bus *bus)
   }
 
   // Aggregate all of the tasks on this bus.
+  TaskSet tasks;
   BOOST_FOREACH (boost::shared_ptr<BarrettBaseHW> const &hw, bus->hardware) {
     BOOST_FOREACH (Task *task, hw->tasks()) {
-      bus->tasks.AddTask(task);
+      tasks.AddTask(task);
     }
   }
 
-  // TODO: Create a schedule from the ScheduleInfo.
+  bus->schedule = CreateSchedule(tasks, bus_info.schedule);
 }
 
 int main(int argc, char **argv)
@@ -229,15 +259,16 @@ int main(int argc, char **argv)
   ros::Rate r(500);
 
   while (ros::ok()) {
-    robot.requestCritical();
-    robot.receiveOther();
-    robot.receiveCritical();
-    robot.requestOther();
+    BOOST_FOREACH (Bus const &bus, buses) {
+      bus.schedule->RunPreControl();
+    }
 
     ros::Time const now(::barrett::highResolutionSystemTime());
     cm.update(now, period);
 
-    robot.write();
+    BOOST_FOREACH (Bus const &bus, buses) {
+      bus.schedule->RunPostControl();
+    }
 
     r.sleep();
   }
