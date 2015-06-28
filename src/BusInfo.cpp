@@ -50,11 +50,13 @@ BusInfo get_value_impl<BusInfo>::call(XmlRpcValue const &xmlrpc)
     = list_of("wam_joint1")("wam_joint2")("wam_joint3")("wam_joint4")
              ("wam_joint5")("wam_joint6")("wam_joint7");
   static boost::array<boost::array<std::string, NUM_FINGER_JOINTS>,
-                      NUM_FINGERS> default_hand_finger_joint_names;
-  // TODO: Initialize default_hand_finger_joint_names.
-  static boost::array<std::string, NUM_SPREAD_JOINTS>
-    default_hand_spread_joint_names = list_of("hand_spread_joint1");
-                                             ("hand_spread_joint2");
+                      NUM_FINGERS> const default_hand_finger_joint_names
+    = list_of(list_of("finger0_1")("finger0_2"))
+             (list_of("finger1_1")("finger1_2"))
+             (list_of("finger2_1")("finger2_2"));
+  static boost::array<std::string, NUM_SPREAD_JOINTS> const
+    default_hand_spread_joint_names
+      = list_of("finger0_0")("finger1_0");
 
   BusInfo bus_info;
 
@@ -84,6 +86,11 @@ BusInfo get_value_impl<BusInfo>::call(XmlRpcValue const &xmlrpc)
     xmlrpc, "forcetorque_accel_name", "ft_accel");
   bus_info.forcetorque_frame_id = get_or_default<std::string>(
     xmlrpc, "forcetorque_frame_id", "wam7");
+
+  bus_info.utilization_warn
+    = get_or_default<double>(xmlrpc, "utilization_threshold_warning", 0.9);
+  bus_info.utilization_error
+    = get_or_default<double>(xmlrpc, "utilization_threshold_error", 1.0);
 }
 
 } // namespace libbarrett_ros

@@ -36,6 +36,9 @@ struct BusInfo {
   std::string forcetorque_accel_name;
   std::string forcetorque_frame_id;
 
+  double utilization_warn;
+  double utilization_error;
+
   ScheduleInfo schedule;
 };
 

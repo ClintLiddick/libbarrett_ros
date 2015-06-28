@@ -48,6 +48,7 @@
 #include <hardware_interface/robot_hw.h>
 #include <controller_manager/controller_manager.h>
 
+#include <realtime_tools/realtime_clock.h>
 #include <libbarrett_ros/TaskSet.h> // for TaskSet
 #include <libbarrett_ros/BarrettRobotHW.h>
 #include <libbarrett_ros/ForceTorqueSensorHW.h>
@@ -121,7 +122,7 @@ static boost::shared_ptr<Schedule> CreateSchedule(
   return boost::make_shared<Schedule>(cycles);
 }
 
-static void InitializeBus(BusInfo const &bus_info, Bus *bus)
+static void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
 {
   using boost::make_shared;
 
@@ -154,7 +155,7 @@ static void InitializeBus(BusInfo const &bus_info, Bus *bus)
 
     bus->hardware.push_back(
       make_shared<WamHW<7> >(
-        pm.getWam7(wait_for_shift_activate), false, &wam_joint_names));
+        pm.getWam7(wait_for_shift_activate), is_realtime, &wam_joint_names));
   } else if (pm.foundWam4()) {
     ROS_INFO("Found a 4-DOF WAM.");
     boost::array<std::string, 4> const wam_joint_names
@@ -162,7 +163,7 @@ static void InitializeBus(BusInfo const &bus_info, Bus *bus)
 
     bus->hardware.push_back(
       make_shared<WamHW<4> >(
-        pm.getWam4(wait_for_shift_activate), false, &wam_joint_names));
+        pm.getWam4(wait_for_shift_activate), is_realtime, &wam_joint_names));
   } else if (pm.foundWam3()) {
     ROS_INFO("Found a 3-DOF WAM.");
     boost::array<std::string, 3> const wam_joint_names
@@ -170,7 +171,7 @@ static void InitializeBus(BusInfo const &bus_info, Bus *bus)
 
     bus->hardware.push_back(
       make_shared<WamHW<3> >(
-        pm.getWam3(wait_for_shift_activate), false, &wam_joint_names));
+        pm.getWam3(wait_for_shift_activate), is_realtime, &wam_joint_names));
   }
 
   if (pm.foundHand()) {
@@ -184,7 +185,7 @@ static void InitializeBus(BusInfo const &bus_info, Bus *bus)
     ROS_INFO("Found a force/torque sensor.");
     bus->hardware.push_back(
       make_shared<ForceTorqueSensorHW>(
-        pm.getForceTorqueSensor(), false,
+        pm.getForceTorqueSensor(), is_realtime,
         bus_info.forcetorque_wrench_name,
         bus_info.forcetorque_accel_name,
         bus_info.forcetorque_frame_id));
@@ -205,6 +206,11 @@ int main(int argc, char **argv)
 {
   using ::boost::make_shared;
   using ::boost::shared_ptr;
+
+  // TODO: These should be read from parameters.
+  uint_fast32_t const control_period = 2000; // us = 500 Hz
+  uint_fast32_t const bus_freq = 1e6; // bps = 1 Mbps
+  bool const is_realtime = false;
 
   ::barrett::installExceptionHandler();
 
@@ -231,12 +237,38 @@ int main(int argc, char **argv)
   // Initialize the communication buses.
   std::vector<Bus> buses(bus_infos.size());
   for (size_t i = 0; i < bus_infos.size(); ++i) {
+    BusInfo const &bus_info = bus_infos[i];
+    Bus &bus = buses[i];
+
     ROS_INFO_STREAM("Initializing communication bus " << i << " of "
                     << bus_infos.size() << ".");
-    InitializeBus(bus_infos[i], &buses[i]);
+    try {
+      InitializeBus(bus_info, is_realtime, &bus);
+    } catch (std::runtime_error const &e) {
+      ROS_FATAL_STREAM("Failed initializating communication bus "
+                       << (i + 1) << ": " << e.what());
+      return 1;
+    }
+
+    // Check bus utilization to, hopefully, avoid a heartbeat fault.
+    double const utilization
+      = bus.schedule->GetUtilization(control_period, bus_freq);
+
+    if (utilization > bus_info.utilization_error) {
+      ROS_FATAL(
+        "Communication bus %zu has bus utilization of %.2f%%; exceeds"
+        " threshold of %.2f%%.",
+        i + 1, 100 * utilization, 100 * bus_info.utilization_error);
+      // TODO: Do we need to do any cleanup here?
+      return 1;
+    } else if (utilization > bus_info.utilization_warn) {
+      ROS_WARN(
+        "Communication bus %zu has bus utilization of %.2f%%; exceeds"
+        " threshold of %.2f%%.",
+        i + 1, 100 * utilization, 100 * bus_info.utilization_warn);
+    }
   }
 
-  // Initialize ros_control.
   ROS_INFO("Initializing the RobotHW interface.");
   BarrettRobotHW robot;
 
@@ -246,6 +278,7 @@ int main(int argc, char **argv)
     }
   }
 
+  ROS_INFO("Activating hardware.");
   robot.initialize();
 
   ROS_INFO("Initializing the ControllerManager.");
@@ -276,6 +309,7 @@ int main(int argc, char **argv)
   ROS_INFO("Exited control loop.");
 
   // Idle the hardware to avoid triggering a heartbeat fault.
+  ROS_INFO("Idling hardware.");
   robot.halt();
 
   return 0;

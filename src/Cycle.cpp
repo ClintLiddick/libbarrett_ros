@@ -1,3 +1,4 @@
+#include <cassert>
 #include <stdexcept>
 #include <boost/foreach.hpp>
 #include <boost/format.hpp>
@@ -19,6 +20,16 @@ uint_fast32_t Cycle::bits() const
   }
 
   return sum; 
+}
+
+std::set<Task *> const &Cycle::required_tasks() const
+{
+  return required_tasks_;
+}
+
+std::set<Task *> const &Cycle::optional_tasks() const
+{
+  return optional_tasks_;
 }
 
 void Cycle::AddTask(Task *task, bool is_required)

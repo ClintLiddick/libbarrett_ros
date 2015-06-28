@@ -2,12 +2,14 @@
 #define LIBBARRETT_ROS_SCHEDULE_H_
 #include <cstddef>
 #include <vector>
+#include <set>
 #include <libbarrett_ros/Cycle.h>
 
 namespace libbarrett_ros {
 
 class Schedule {
 public:
+  Schedule();
   Schedule(std::vector<Cycle> const &cycles);
 
   void RunPreControl();
@@ -22,6 +24,7 @@ private:
   };
 
   std::vector<Cycle> cycles_;
+  std::set<Task *> tasks_;
   State state_;
   size_t phase_;
 };

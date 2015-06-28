@@ -20,21 +20,30 @@ struct XmlRpcMetadata<bool> {
 };
 
 template <>
-struct XmlRpcMetadata<std::string> {
-  typedef std::string element_type;
-  typedef element_type const &return_type;
-
-  static XmlRpcValue::Type enum_type() { return XmlRpcValue::TypeString; }
-  char const *name() const { return "string"; }
-};
-
-template <>
 struct XmlRpcMetadata<int> {
   typedef int element_type;
   typedef element_type const &return_type;
 
   static XmlRpcValue::Type enum_type() { return XmlRpcValue::TypeInt; }
   char const *name() const { return "integer"; }
+};
+
+template <>
+struct XmlRpcMetadata<double> {
+  typedef int element_type;
+  typedef element_type const &return_type;
+
+  static XmlRpcValue::Type enum_type() { return XmlRpcValue::TypeDouble; }
+  char const *name() const { return "double"; }
+};
+
+template <>
+struct XmlRpcMetadata<std::string> {
+  typedef std::string element_type;
+  typedef element_type const &return_type;
+
+  static XmlRpcValue::Type enum_type() { return XmlRpcValue::TypeString; }
+  char const *name() const { return "string"; }
 };
 
 template <class T>

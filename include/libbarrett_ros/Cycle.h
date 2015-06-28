@@ -13,6 +13,9 @@ public:
 
   void AddTask(Task *task, bool is_required);
 
+  std::set<Task *> const &required_tasks() const;
+  std::set<Task *> const &optional_tasks() const;
+
   void RequestRequired();
   void ReceiveRequired();
   void WriteRequired();
