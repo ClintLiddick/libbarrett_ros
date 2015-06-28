@@ -14,9 +14,10 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>cmake_modules</build_depend>
   <depend>boost</depend>
-  <depend>roscpp</depend>
-  <depend>libbarrett</depend>
-  <depend>control_toolbox</depend>
   <depend>controller_manager</depend>
   <depend>hardware_interface</depend>
+  <depend>joint_limits_interface</depend>
+  <depend>libbarrett</depend>
+  <depend>roscpp</depend>
+  <depend>transmission_interface</depend>
 </package>
