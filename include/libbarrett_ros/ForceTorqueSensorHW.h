@@ -20,14 +20,6 @@ public:
 
   virtual void registerHandles(BarrettInterfaces &interfaces);
 
-  virtual void requestCritical();
-  virtual void receiveCritical();
-
-  virtual void requestOther();
-  virtual void receiveOther();
-
-  virtual void write();
-
   virtual void halt();
 
 private:

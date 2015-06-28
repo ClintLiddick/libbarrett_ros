@@ -37,14 +37,6 @@ public:
 
   virtual std::vector<Task *> const &tasks() const = 0;
 
-  virtual void requestCritical() = 0;
-  virtual void receiveCritical() = 0;
-
-  virtual void requestOther() = 0;
-  virtual void receiveOther() = 0;
-
-  virtual void write() = 0;
-
   virtual void halt() = 0;
 
   virtual void registerHandles(BarrettInterfaces &interfaces) = 0;

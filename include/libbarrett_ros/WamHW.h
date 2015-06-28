@@ -65,36 +65,10 @@ public:
     }
   }
 
-  virtual void requestCritical()
-  {
-    position_task_.Request();
-    torque_task_.Request();
-  }
-
-  virtual void receiveCritical()
-  {
-    position_task_.Receive(true);
-    torque_task_.Receive(true);
-  }
-
-  virtual void requestOther()
-  {
-  }
-
-  virtual void receiveOther()
-  {
-  }
-
   virtual void halt()
   {
     llwam_->getSafetyModule()->setMode(barrett::SafetyModule::IDLE);
     llwam_->getSafetyModule()->waitForMode(barrett::SafetyModule::IDLE, true, 0.05);
-  }
-
-  virtual void write()
-  {
-    position_task_.Write();
-    torque_task_.Write();
   }
 
 private:

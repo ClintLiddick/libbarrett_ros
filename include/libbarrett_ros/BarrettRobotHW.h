@@ -13,17 +13,10 @@ public:
   virtual ~BarrettRobotHW();
 
   void initialize();
-  void add(boost::shared_ptr<BarrettBaseHW> const &hardware);
-
-  void requestCritical();
-  void receiveCritical();
-
-  void requestOther();
-  void receiveOther();
-
-  void write();
 
   void halt();
+
+  void add(boost::shared_ptr<BarrettBaseHW> const &hardware);
 
 private:
   BarrettInterfaces interfaces_;

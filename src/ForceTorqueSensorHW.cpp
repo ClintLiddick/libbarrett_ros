@@ -54,33 +54,6 @@ void ForceTorqueSensorHW::registerHandles(BarrettInterfaces &interfaces)
   );
 }
 
-void ForceTorqueSensorHW::requestCritical()
-{
-}
-
-void ForceTorqueSensorHW::receiveCritical()
-{
-}
-
-void ForceTorqueSensorHW::requestOther()
-{
-  ft_task_.Request();
-  accel_task_.Request();
-}
-
-void ForceTorqueSensorHW::receiveOther()
-{
-  ft_task_.Receive(false);
-  accel_task_.Receive(false);
-}
-
-void ForceTorqueSensorHW::write()
-{
-  ft_task_.Write();
-  accel_task_.Write();
-}
-
 void ForceTorqueSensorHW::halt()
 {
 }
-
