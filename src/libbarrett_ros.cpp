@@ -3,8 +3,7 @@
 
  This file is part of libbarrett_ros.
 
- This version of libbarrett_ros is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
+ This version of libbarrett_ros is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as
  published by the Free Software Foundation, either version 3 of the
  License, or (at your option) any later version.
 
@@ -207,32 +206,41 @@ int main(int argc, char **argv)
   using ::boost::make_shared;
   using ::boost::shared_ptr;
 
-  // TODO: These should be read from parameters.
-  uint_fast32_t const control_period = 2000; // us = 500 Hz
-  uint_fast32_t const bus_freq = 1e6; // bps = 1 Mbps
-  bool const is_realtime = false;
-
-  ::barrett::installExceptionHandler();
+  // TODO: What does this do?
+  barrett::installExceptionHandler();
 
   // Initialize ROS.
-  ::ros::init(argc, argv, "barrett_ros");
-  ::ros::NodeHandle nh;
-  ::ros::AsyncSpinner spinner(2);
+  ros::init(argc, argv, "barrett_ros");
+  ros::NodeHandle nh;
+  ros::AsyncSpinner spinner(2);
   spinner.start();
 
   // Read parameters.
+  // TODO: Is this the right way to get the private parameter namespace?
   XmlRpc::XmlRpcValue root_xmlrpc;
   ros::param::get("~", root_xmlrpc);
 
   std::vector<BusInfo> bus_infos;
   try {
-    // TODO: This should operate on teh root XmlRpcValue, not "buses".
     bus_infos = get_or_throw<std::vector<BusInfo> >(root_xmlrpc, "buses");
     ROS_INFO_STREAM("Found" << bus_infos.size() << " communication buses.");
   } catch (std::runtime_error const &e) {
     ROS_FATAL("Failed loading parameters: %s", e.what());
     return 1;
   }
+
+  bool const is_realtime
+    = get_or_default<bool>(root_xmlrpc, "realtime", false);
+  if (is_realtime) {
+    ROS_FATAL("Realtime support is not yet implemented.");
+    return 1;
+  }
+
+  // Default to a 500 Hz conrol frequency on a 1 Mbps CAN bus.
+  uint_fast32_t const control_period
+    = get_or_default<int>(root_xmlrpc, "control_period", 2000);
+  uint_fast32_t const bus_freq
+    = get_or_default<int>(root_xmlrpc, "bus_frequency", 1e6);
 
   // Initialize the communication buses.
   std::vector<Bus> buses(bus_infos.size());
@@ -288,7 +296,7 @@ int main(int argc, char **argv)
   // TODO: ros::Rate and ros::Time are likely not realtime-safe.
   ROS_INFO("Entering control loop.");
 
-  ros::Duration const period(0, 500000000);
+  ros::Duration const period(0, control_period * 1e3);
   ros::Rate r(500);
 
   while (ros::ok()) {
