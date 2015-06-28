@@ -42,6 +42,7 @@ add_executable(${PROJECT_NAME}
   src/ForceTorqueSensorHW.cpp 
   src/HandHW.cpp
   src/BusInfo.cpp
+  src/Bus.cpp
 )
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
