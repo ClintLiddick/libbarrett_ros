@@ -32,9 +32,9 @@ catkin_package(
 
 include_directories(
   include
-  ${catkin_INCLUDE_DIRS}
   ${BARRETT_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS}
 )
 link_directories(
   ${BARRETT_LIB_DIRS}
@@ -48,23 +48,23 @@ add_definitions(
 )
 
 add_library(${PROJECT_NAME}
+  src/BarrettRobotHW.cpp
+  src/Bus.cpp
+  src/BusInfo.cpp
+  src/Cycle.cpp
+  src/ForceTorqueSensorHW.cpp 
+  src/HandHW.cpp
+  src/Schedule.cpp
+  src/TaskSet.cpp
   src/tasks/AccelerationTask.cpp
   src/tasks/ForceTorqueTask.cpp
   src/tasks/WAMPositionTask.cpp
   src/tasks/WAMTorqueTask.cpp
-  src/Cycle.cpp
-  src/Schedule.cpp
-  src/TaskSet.cpp
-  src/BarrettRobotHW.cpp
-  src/ForceTorqueSensorHW.cpp 
-  src/HandHW.cpp
-  src/BusInfo.cpp
-  src/Bus.cpp
 )
 target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
   ${BARRETT_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
 )
 
 add_executable(${PROJECT_NAME}_controller
@@ -72,9 +72,9 @@ add_executable(${PROJECT_NAME}_controller
 )
 target_link_libraries(${PROJECT_NAME}_controller
   ${PROJECT_NAME}
-  ${catkin_LIBRARIES}
   ${BARRETT_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
 )
 set_target_properties(${PROJECT_NAME}_controller PROPERTIES
   OUTPUT_NAME controller
