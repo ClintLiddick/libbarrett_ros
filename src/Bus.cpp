@@ -1,5 +1,7 @@
 #include <string>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/array.hpp>
+#include <boost/format.hpp>
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
 #include <barrett/products/product_manager.h>
@@ -58,7 +60,9 @@ static void InitializeSchedule(
 
 void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
 {
+  using boost::format;
   using boost::make_shared;
+  using boost::str;
   using barrett::ProductManager;
 
   // TODO: Can we safely set both of these to false?
@@ -67,7 +71,9 @@ void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
 
   // Initialize the ProductManager from configuration files.
   std::string const &config_path = bus_info.configuration_path;
-  ROS_INFO_STREAM("Loading configuration file '" << config_path << "'.");
+  ROS_INFO_STREAM(
+    "Loading configuration file '" << config_path << "' for bus '"
+    << bus_info.name << "'.");
   bus->product_manager = make_shared<ProductManager>(config_path.c_str());
 
   // Stop the libbarrett thread. We'll handle everything oruselves.
@@ -84,7 +90,7 @@ void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
   bus->hardware.reserve(3);
 
   if (pm.foundWam7()) {
-    ROS_INFO("Found a 7-DOF WAM.");
+    ROS_INFO_STREAM("Found a 7-DOF WAM on bus '" << bus_info.name << "'.");
     boost::array<std::string, 7> const wam_joint_names
       = to_array<std::string, 7>(bus_info.wam_joint_names);
 
@@ -92,7 +98,7 @@ void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
       make_shared<WamHW<7> >(
         pm.getWam7(wait_for_shift_activate), is_realtime, &wam_joint_names));
   } else if (pm.foundWam4()) {
-    ROS_INFO("Found a 4-DOF WAM.");
+    ROS_INFO_STREAM("Found a 4-DOF WAM on bus '" << bus_info.name << "'.");
     boost::array<std::string, 4> const wam_joint_names
       = to_array<std::string, 4>(bus_info.wam_joint_names);
 
@@ -100,7 +106,7 @@ void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
       make_shared<WamHW<4> >(
         pm.getWam4(wait_for_shift_activate), is_realtime, &wam_joint_names));
   } else if (pm.foundWam3()) {
-    ROS_INFO("Found a 3-DOF WAM.");
+    ROS_INFO_STREAM("Found a 3-DOF WAM on bus '" << bus_info.name << "'.");
     boost::array<std::string, 3> const wam_joint_names
       = to_array<std::string, 3>(bus_info.wam_joint_names);
 
@@ -110,14 +116,17 @@ void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
   }
 
   if (pm.foundHand()) {
-    ROS_INFO("Found a BarrettHand.");
+    ROS_INFO_STREAM("Found a BarrettHand on bus '" << bus_info.name << "'.");
+
     barrett::Hand *ft = pm.getHand();
     // TODO: Implement a BarrettHand hardware interface.
     ROS_WARN("The BarrettHand is not yet supported.");
   }
 
   if (pm.foundForceTorqueSensor()) {
-    ROS_INFO("Found a force/torque sensor.");
+    ROS_INFO_STREAM(
+      "Found a force/torque sensor on bus '" << bus_info.name << "'.");
+
     bus->hardware.push_back(
       make_shared<ForceTorqueSensorHW>(
         pm.getForceTorqueSensor(), is_realtime,
@@ -126,15 +135,43 @@ void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
         bus_info.forcetorque_frame_id));
   }
 
-  // Aggregate all of the tasks on this bus.
-  TaskSet tasks;
+  // Aggregate all of the tasks on this bus. We'll also build (1) a temporary
+  // map that includes the originating hardware interface for debugging
+  // purposes and (2) a log message listing the tasks.
+  typedef std::map<Task *, BarrettBaseHW *>::iterator Iterator;
+  std::map<Task *, BarrettBaseHW *> tasks;
+  std::vector<std::string> task_names;
+  TaskSet task_set;
+
   BOOST_FOREACH (boost::shared_ptr<BarrettBaseHW> const &hw, bus->hardware) {
     BOOST_FOREACH (Task *task, hw->tasks()) {
-      tasks.AddTask(task);
+      std::pair<Iterator, bool> const result = tasks.insert(
+        std::make_pair(task, hw.get()));
+      if (!result.second) {
+        throw std::runtime_error(str(
+          format("Found duplicate task with name '%s' in hardware"
+                 " interfaces %p and %p.")
+          % task->name() % result.first->second % hw.get()));
+      }
+
+      task_set.AddTask(task);
+      task_names.push_back(task->name());
     }
   }
 
-  InitializeSchedule(tasks, bus_info.schedule_info, &bus->schedule);
+  if (tasks.empty()) {
+    ROS_WARN_STREAM(
+      "Found zero tasks on bus '" << bus_info.name << "'. Did you specify a"
+      " schedule?");
+  } else {
+    std::sort(task_names.begin(), task_names.end());
+
+    ROS_INFO_STREAM(
+      "Found " << tasks.size() << " tasks on bus '" << bus_info.name << "': "
+      << boost::algorithm::join(task_names, ", "));
+  }
+
+  InitializeSchedule(task_set, bus_info.schedule_info, &bus->schedule);
 }
 
 } // namespace libbarrett_ros
