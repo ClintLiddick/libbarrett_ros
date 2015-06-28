@@ -24,6 +24,7 @@ struct ScheduleInfo {
 };
 
 struct BusInfo {
+  std::string name;
   std::string configuration_path;
 
   std::vector<std::string> wam_joint_names;

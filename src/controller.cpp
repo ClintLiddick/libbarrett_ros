@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include <boost/format.hpp>
 #include <boost/foreach.hpp>
 #include <barrett/exception.h>
 #include <controller_manager/controller_manager.h>
@@ -12,6 +13,11 @@ int main(int argc, char **argv)
 {
   using namespace libbarrett_ros;
 
+  using boost::format;
+  using boost::str;
+
+  typedef std::pair<std::string, BusInfo> NamedBusInfo;
+
   // Installs a new terminate() function that, when no catch clauses handle an
   // exception, prints a stacktrace to stderr before performing the default
   // behavior (terminating the process and generating a core file).
@@ -22,17 +28,21 @@ int main(int argc, char **argv)
   ros::NodeHandle nh;
 
   // Read parameters.
-  // TODO: Is this the right way to get the private parameter namespace?
   XmlRpc::XmlRpcValue root_xmlrpc;
   ros::param::get("~", root_xmlrpc);
 
+  // Load the buses as a struct. roslaunch and rosparam have poor support for
+  // manipulating lists, so we'll avoid them at the top level.
   std::vector<BusInfo> bus_infos;
-  try {
-    bus_infos = get_or_throw<std::vector<BusInfo> >(root_xmlrpc, "buses");
-    ROS_INFO_STREAM("Found" << bus_infos.size() << " communication buses.");
-  } catch (std::runtime_error const &e) {
-    ROS_FATAL("Failed loading parameters: %s", e.what());
-    return 1;
+  {
+    std::map<std::string, BusInfo> bus_info_map
+      = get_or_throw<std::map<std::string, BusInfo> >(root_xmlrpc, "buses");
+
+    bus_infos.reserve(bus_info_map.size());
+    BOOST_FOREACH (NamedBusInfo const &named_bus_info, bus_info_map) {
+      bus_infos.push_back(named_bus_info.second);
+      bus_infos.back().name = named_bus_info.first;
+    }
   }
 
   bool const is_realtime
@@ -42,6 +52,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  // TODO: Change these raw parameters to doubles (specified in seconds).
   uint_fast32_t const control_period
     = get_or_default<int>(root_xmlrpc, "control_period", 2000); // 500 Hz
   uint_fast32_t const bus_freq
@@ -54,14 +65,14 @@ int main(int argc, char **argv)
   for (size_t i = 0; i < bus_infos.size(); ++i) {
     BusInfo const &bus_info = bus_infos[i];
     Bus &bus = buses[i];
+    bus.name = bus_info.name;
 
-    ROS_INFO_STREAM("Initializing communication bus " << i << " of "
-                    << bus_infos.size() << ".");
+    ROS_INFO_STREAM("Initializing bus '" << bus.name << "'.");
     try {
       InitializeBus(bus_info, is_realtime, &bus);
     } catch (std::runtime_error const &e) {
-      ROS_FATAL_STREAM("Failed initializating communication bus "
-                       << (i + 1) << ": " << e.what());
+      ROS_FATAL_STREAM("Failed initializating bus '" << bus.name << "': "
+                       << e.what());
       return 1;
     }
 
@@ -71,16 +82,18 @@ int main(int argc, char **argv)
 
     if (utilization > bus_info.utilization_error) {
       ROS_FATAL(
-        "Communication bus %zu has bus utilization of %.2f%%; exceeds"
-        " threshold of %.2f%%.",
-        i + 1, 100 * utilization, 100 * bus_info.utilization_error);
+        "Bus '%s' has bus utilization of %.2f%%; exceeds"
+        " threshold of %.2f%%. This threshold is controlled by the"
+        " bus-specific 'utilization_threshold_error' parameter.",
+        bus.name.c_str(), 100 * utilization, 100 * bus_info.utilization_error);
       // TODO: Do we need to do any cleanup here?
       return 1;
     } else if (utilization > bus_info.utilization_warn) {
       ROS_WARN(
-        "Communication bus %zu has bus utilization of %.2f%%; exceeds"
-        " threshold of %.2f%%.",
-        i + 1, 100 * utilization, 100 * bus_info.utilization_warn);
+        "Bus '%s' has bus utilization of %.2f%%; exceeds"
+        " threshold of %.2f%%. This threshold is controlled by the"
+        " bus-specific 'utilization_threshold_warning' parameter.",
+        bus.name.c_str(), 100 * utilization, 100 * bus_info.utilization_warn);
     }
   }
 
@@ -112,7 +125,7 @@ int main(int argc, char **argv)
 
   // Use the main (non-realtime) thread to process ROS messages. This function
   // will exit when the user presses Control+C.
-  // TODO: Could the Control+C signal to be caught by the control thread?
+  // TODO: Could the Control+C signal be caught by the control thread?
   // TODO: Should we use an AsyncSpinner for this?
   ros::Rate rate(publish_freq);
 

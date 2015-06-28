@@ -16,6 +16,7 @@ namespace libbarrett_ros {
 class BusInfo;
 
 struct Bus {
+  std::string name;
   boost::shared_ptr<barrett::ProductManager> product_manager;
   std::vector<boost::shared_ptr<BarrettBaseHW> > hardware;
   Schedule schedule;

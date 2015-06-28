@@ -91,6 +91,8 @@ BusInfo get_value_impl<BusInfo>::call(XmlRpcValue const &xmlrpc)
     = get_or_default<double>(xmlrpc, "utilization_threshold_warning", 0.9);
   bus_info.utilization_error
     = get_or_default<double>(xmlrpc, "utilization_threshold_error", 1.0);
+
+  return bus_info;
 }
 
 } // namespace libbarrett_ros

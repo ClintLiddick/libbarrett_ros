@@ -6,6 +6,9 @@ namespace libbarrett_ros {
 
 using ::XmlRpc::XmlRpcValue;
 
+/*
+ * XmlRpcMetadata - Defines conversions for primitive types.
+ */
 template <class T>
 struct XmlRpcMetadata {
 };
@@ -22,6 +25,15 @@ struct XmlRpcMetadata<bool> {
 template <>
 struct XmlRpcMetadata<int> {
   typedef int element_type;
+  typedef element_type const &return_type;
+
+  static XmlRpcValue::Type enum_type() { return XmlRpcValue::TypeInt; }
+  char const *name() const { return "integer"; }
+};
+
+template <>
+struct XmlRpcMetadata<size_t> {
+  typedef size_t element_type;
   typedef element_type const &return_type;
 
   static XmlRpcValue::Type enum_type() { return XmlRpcValue::TypeInt; }
@@ -46,6 +58,9 @@ struct XmlRpcMetadata<std::string> {
   char const *name() const { return "string"; }
 };
 
+/*
+ * get_value_impl - Defines conversions for complex types.
+ */
 template <class T>
 struct get_value_impl {
   typedef T element_type;
@@ -79,6 +94,31 @@ struct get_value_impl<std::vector<T> > {
       output_vector.push_back(get_value_impl<T>::call(vector_xmlrpc[i]));
     }
     return output_vector;
+  }
+};
+
+template <class K, class V>
+struct get_value_impl<std::map<K, V> > {
+  typedef std::map<K, V> element_type;
+  typedef element_type return_type;
+  
+  static return_type call(XmlRpcValue const &xmlrpc_const)
+  {
+    XmlRpcValue &xmlrpc = const_cast<XmlRpcValue &>(xmlrpc_const);
+
+    if (xmlrpc.getType() != XmlRpcValue::TypeStruct) {
+      throw std::runtime_error("Parameter is not a struct.");
+    }
+
+    std::map<K, V> output_map;
+    XmlRpc::XmlRpcValue::ValueStruct::iterator it;
+
+    for (it = xmlrpc.begin(); it != xmlrpc.end(); ++it) {
+      K const key = get_value_impl<K>::call(it->first);
+      V const value = get_value_impl<V>::call(it->second);
+      output_map[key] = value;
+    }
+    return output_map;
   }
 };
 
