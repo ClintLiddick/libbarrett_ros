@@ -1,5 +1,5 @@
-#ifndef LIBBARRETT_ROS_FORCETORQUESENSORHW_H_
-#define LIBBARRETT_ROS_FORCETORQUESENSORHW_H_
+#ifndef LIBBARRETT_ROS_HARDWARE_FORCETORQUESENSORHW_H_
+#define LIBBARRETT_ROS_HARDWARE_FORCETORQUESENSORHW_H_
 #include <string>
 #include <barrett/products/force_torque_sensor.h>
 #include <libbarrett_ros/BarrettBaseHW.h>
@@ -43,4 +43,4 @@ private:
 
 }
 
-#endif
+#endif // ifndef LIBBARRETT_ROS_HARDWARE_FORCETORQUESENSORHW_H_

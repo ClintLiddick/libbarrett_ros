@@ -1,5 +1,5 @@
-#ifndef LIBBARRETT_ROS_HANDHW_H_
-#define LIBBARRETT_ROS_HANDHW_H_
+#ifndef LIBBARRETT_ROS_HARDWARE_HANDHW_H_
+#define LIBBARRETT_ROS_HARDWARE_HANDHW_H_
 #include <list>
 #include <boost/array.hpp>
 #include <barrett/products/hand.h>
@@ -56,4 +56,4 @@ private:
 
 }
 
-#endif
+#endif // ifndef LIBBARRETT_ROS_HARDWARE_HANDHW_H_

@@ -1,4 +1,4 @@
-#include <libbarrett_ros/HandHW.h>
+#include <libbarrett_ros/hardware/HandHW.h>
 
 using libbarrett_ros::BarrettInterfaces;
 using libbarrett_ros::HandHW;

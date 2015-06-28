@@ -7,11 +7,11 @@
 #include <libbarrett_ros/Bus.h>
 #include <libbarrett_ros/BusInfo.h>
 #include <libbarrett_ros/Cycle.h>
-#include <libbarrett_ros/ForceTorqueSensorHW.h>
-#include <libbarrett_ros/HandHW.h>
 #include <libbarrett_ros/Schedule.h>
 #include <libbarrett_ros/TaskSet.h>
-#include <libbarrett_ros/WamHW.h>
+#include <libbarrett_ros/hardware/HandHW.h>
+#include <libbarrett_ros/hardware/WamHW.h>
+#include <libbarrett_ros/hardware/ForceTorqueSensorHW.h>
 
 namespace libbarrett_ros {
 

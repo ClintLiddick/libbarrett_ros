@@ -5,7 +5,7 @@
 #include <boost/array.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <libbarrett_ros/params.h>
-#include <libbarrett_ros/HandHW.h> // for NUM_*_JOINTS
+#include <libbarrett_ros/hardware/HandHW.h> // for NUM_*_JOINTS
 
 namespace libbarrett_ros {
 

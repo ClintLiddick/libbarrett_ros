@@ -74,10 +74,10 @@ add_library(${PROJECT_NAME}
   src/BusInfo.cpp
   src/ControlLoop.cpp
   src/Cycle.cpp
-  src/ForceTorqueSensorHW.cpp 
-  src/HandHW.cpp
   src/Schedule.cpp
   src/TaskSet.cpp
+  src/hardware/HandHW.cpp
+  src/hardware/ForceTorqueSensorHW.cpp 
   src/tasks/AccelerationTask.cpp
   src/tasks/ForceTorqueTask.cpp
   src/tasks/WAMPositionTask.cpp

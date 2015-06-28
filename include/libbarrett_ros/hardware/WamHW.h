@@ -1,5 +1,5 @@
-#ifndef LIBBARRETT_ROS_WAMHW_H_
-#define LIBBARRETT_ROS_WAMHW_H_
+#ifndef LIBBARRETT_ROS_HARDWARE_WAMHW_H_
+#define LIBBARRETT_ROS_HARDWARE_WAMHW_H_
 #include <iostream>
 #include <string>
 #include <boost/array.hpp>
@@ -96,4 +96,4 @@ private:
 
 }
 
-#endif
+#endif // ifndef LIBBARRETT_ROS_HARDWARE_WAMHW_H_

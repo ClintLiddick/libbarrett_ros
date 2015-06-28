@@ -1,4 +1,4 @@
-#include <libbarrett_ros/ForceTorqueSensorHW.h>
+#include <libbarrett_ros/hardware/ForceTorqueSensorHW.h>
 #include <barrett/systems/wam.h>
 
 using libbarrett_ros::BarrettBaseHW;
