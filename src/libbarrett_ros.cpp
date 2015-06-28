@@ -77,7 +77,7 @@ using XmlRpc::XmlRpcValue;
 struct Bus {
   boost::shared_ptr<ProductManager> product_manager;
   std::vector<boost::shared_ptr<BarrettBaseHW> > hardware;
-  boost::shared_ptr<Schedule> schedule;
+  Schedule schedule;
 };
 
 template <class T, size_t N>
@@ -98,10 +98,12 @@ static boost::array<T, N> to_array(std::vector<T> const &v)
   return output;
 }
 
-static boost::shared_ptr<Schedule> CreateSchedule(
-  TaskSet const &tasks, ScheduleInfo const &schedule_info)
+static void InitializeSchedule(
+  TaskSet const &tasks, ScheduleInfo const &schedule_info, Schedule *schedule)
 {
   using boost::make_shared;
+
+  assert(schedule);
 
   std::vector<Cycle> cycles(schedule_info.cycles.size());
 
@@ -118,7 +120,7 @@ static boost::shared_ptr<Schedule> CreateSchedule(
     }
   }
 
-  return boost::make_shared<Schedule>(cycles);
+  *schedule = Schedule(cycles);
 }
 
 static void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
@@ -198,7 +200,7 @@ static void InitializeBus(BusInfo const &bus_info, bool is_realtime, Bus *bus)
     }
   }
 
-  bus->schedule = CreateSchedule(tasks, bus_info.schedule);
+  InitializeSchedule(tasks, bus_info.schedule, &bus->schedule);
 }
 
 int main(int argc, char **argv)
@@ -260,7 +262,7 @@ int main(int argc, char **argv)
 
     // Check bus utilization to, hopefully, avoid a heartbeat fault.
     double const utilization
-      = bus.schedule->GetUtilization(control_period, bus_freq);
+      = bus.schedule.GetUtilization(control_period, bus_freq);
 
     if (utilization > bus_info.utilization_error) {
       ROS_FATAL(
@@ -300,15 +302,15 @@ int main(int argc, char **argv)
   ros::Rate r(500);
 
   while (ros::ok()) {
-    BOOST_FOREACH (Bus const &bus, buses) {
-      bus.schedule->RunPreControl();
+    BOOST_FOREACH (Bus &bus, buses) {
+      bus.schedule.RunPreControl();
     }
 
     ros::Time const now(::barrett::highResolutionSystemTime());
     cm.update(now, period);
 
-    BOOST_FOREACH (Bus const &bus, buses) {
-      bus.schedule->RunPostControl();
+    BOOST_FOREACH (Bus &bus, buses) {
+      bus.schedule.RunPostControl();
     }
 
     r.sleep();
