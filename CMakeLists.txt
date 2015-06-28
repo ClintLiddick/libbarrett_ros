@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(libbarrett_ros)
-
+project(libbarrett_ros) 
 find_package(catkin REQUIRED COMPONENTS
   controller_manager
   hardware_interface
@@ -51,6 +50,7 @@ add_library(${PROJECT_NAME}
   src/BarrettRobotHW.cpp
   src/Bus.cpp
   src/BusInfo.cpp
+  src/ControlLoop.cpp
   src/Cycle.cpp
   src/ForceTorqueSensorHW.cpp 
   src/HandHW.cpp
